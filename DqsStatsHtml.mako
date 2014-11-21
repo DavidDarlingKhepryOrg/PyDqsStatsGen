@@ -1,3 +1,4 @@
+<%! import html %>
 <html>
 	<style>
 		
@@ -102,15 +103,15 @@
 		<table style="border: none;">
 			<tr>
 				<th style="border: none;">Source:</th>
-				<td style="border: none;">${dataProvider}</td>
+				<td style="border: none;">${html.escape(dataProvider)}</td>
 			</tr>
 			<tr>
 				<th style="border: none;">Run by:</th>
-				<td style="border: none;">${executorName}</td>
+				<td style="border: none;">${html.escape(executorName)}</td>
 			</tr>
 			<tr>
 				<th style="border: none;">Run date:</th>
-				<td style="border: none;">${runDate}</td>
+				<td style="border: none;">${html.escape(runDate)}</td>
 			</tr>
 		</table>
 		<p />
@@ -120,7 +121,7 @@
 			</tr>
 			<tr>
 				<th>Source File</th>
-				<td class="exeBlockCnt">${srcPathExpanded}</td>
+				<td class="exeBlockCnt">${html.escape(srcPathExpanded)}</td>
 			</tr>
 			<tr>
 				<th>Input Records</th>
@@ -132,7 +133,7 @@
 			</tr>
 			<tr>
 				<th>Source File Delimiter</th>
-				<td class="exeBlockCnt">${srcDelim}</td>
+				<td class="exeBlockCnt">${html.escape(srcDelim)}</td>
 			</tr>
 			<tr>
 				<th>Source Header Rows</th>
@@ -140,15 +141,15 @@
 			</tr>
 			<tr>
 				<th>Target File Delimiter</th>
-				<td class="exeBlockCnt">${tgtDelim}</td>
+				<td class="exeBlockCnt">${html.escape(tgtDelim)}</td>
 			</tr>
 			<tr>
 				<th>APCD_SOURCE_ID Format</th>
-				<td class="exeBlockCnt">${apcdSrcIdFmt}</td>
+				<td class="exeBlockCnt">${html.escape(apcdSrcIdFmt)}</td>
 			</tr>
 			<tr>
 				<th>Source ID Column Name</th>
-				<td class="exeBlockCnt">${srcIdColName}</td>
+				<td class="exeBlockCnt">${html.escape(srcIdColName)}</td>
 			</tr>
 			<tr>
 				<th>APCD_SOURCE_ID Beginning Number</th>
@@ -176,7 +177,7 @@
 			</tr>
 			<tr>
 				<th>DQS Report File</th>
-				<td class="exeBlockCnt">${tgtDqsFileNameExpanded}</td>
+				<td class="exeBlockCnt">${html.escape(tgtDqsFileNameExpanded)}</td>
 			</tr>
 		</table>
 
@@ -190,6 +191,9 @@
 			</tr>
 			<tr>
 				<th>Column Name</th>
+				<th>MinWidth</th>
+				<th>MaxWidth</th>
+				<th>AvgWidth</th>
 				<th>Non-Blanks</th>
 				<th>Coverage Percent</th>
 			</tr>
@@ -197,7 +201,10 @@
 			% for colName in colNames:
 			
 			<tr class="onlyBlockVal">
-				<th>${colName}</th>
+				<th>${html.escape(colName)}</th>
+				<td class="numeric">${minWidths[colName]}</td>
+				<td class="numeric">${maxWidths[colName]}</td>
+				<td class="numeric">${'{0:.1f}'.format(avgWidths[colName])}</td>
 				<td class="numeric">${nonBlanks[colName]}</td>
 				<td class="numeric">${'{0:.2%}'.format(nonBlanks[colName]/inputRows)}</td>
 			</tr>
@@ -215,7 +222,7 @@
 				<th colspan="9">Source File Column Value Frequencies</th>
 			</tr>
 			<tr>
-				<th colspan="9">${runDate}</th>
+				<th colspan="9">${html.escape(runDate)}</th>
 			</tr>
 		</table>
 		
@@ -223,7 +230,7 @@
 		<p />
 		<table>
 			<tr class="colStatsHdrLvl1">
-				<th colspan="9">${colName} Values by Freq (desc), Value (asc), Value (desc)</th>
+				<th colspan="9">${html.escape(colName)} Values by Freq (desc), Value (asc), Value (desc)</th>
 			</tr>
 			<tr class="colStatsHdrLvl2">
 				<th colspan="3">Values by Value (asc)</th>
@@ -249,24 +256,24 @@
                   % for i in range(attrs['maxVals']):
 			
       		<tr>
-    				<th class="leftBlockValLft">${valueFreqs[colName]['frqValValAsc'][i][0]}</th>
+    				<th class="leftBlockValLft">${html.escape(valueFreqs[colName]['frqValValAsc'][i][0])}</th>
     				<td class="leftBlockValRgt">${valueFreqs[colName]['frqValValAsc'][i][1]}</td>
                           % if nonBlanks[colName] > 0:
             				<td class="leftBlockValRgt">${'{0:.2%}'.format(valueFreqs[colName]['frqValValAsc'][i][1]/inputRows)}</td>
                           % else:
             				<td class="leftBlockValRgt">0.00%</td>
                           % endif
-    				<th class="leftBlockValLft">${valueFreqs[colName]['frqValFrqAsc'][i][0]}</th>
-    				<td class="leftBlockValRgt">${valueFreqs[colName]['frqValFrqAsc'][i][1]}</td>
+    				<th class="leftBlockValLft">${html.escape(valueFreqs[colName]['frqValFrqDsc'][i][0])}</th>
+    				<td class="leftBlockValRgt">${valueFreqs[colName]['frqValFrqDsc'][i][1]}</td>
                           % if nonBlanks[colName] > 0:
-           				<td class="leftBlockValRgt">${'{0:.2%}'.format(valueFreqs[colName]['frqValFrqAsc'][i][1]/inputRows)}</td>
+           				<td class="leftBlockValRgt">${'{0:.2%}'.format(valueFreqs[colName]['frqValFrqDsc'][i][1]/inputRows)}</td>
                           % else:
             				<td class="leftBlockValRgt">0.00%</td>
                           % endif
-       				<th class="leftBlockValLft">${valueFreqs[colName]['frqValFrqDsc'][i][0]}</th>
-    				<td class="leftBlockValRgt">${valueFreqs[colName]['frqValFrqDsc'][i][1]}</td>
+       				<th class="leftBlockValLft">${html.escape(valueFreqs[colName]['frqValFrqAsc'][i][0])}</th>
+    				<td class="leftBlockValRgt">${valueFreqs[colName]['frqValFrqAsc'][i][1]}</td>
                           % if nonBlanks[colName] > 0:
-          				<td class="leftBlockValRgt">${'{0:.2%}'.format(valueFreqs[colName]['frqValFrqDsc'][i][1]/inputRows)}</td>
+          				<td class="leftBlockValRgt">${'{0:.2%}'.format(valueFreqs[colName]['frqValFrqAsc'][i][1]/inputRows)}</td>
                           % else:
            				<td class="leftBlockValRgt">0.00%</td>
                           % endif
@@ -278,36 +285,11 @@
 		<hr />
 		<hr />
 		
-		<p />
-		<table>
-			<tr>
-				<th colspan="4">Source File Column Widths</th>
-			</tr>
-			<tr>
-				<th>Column Name</th>
-				<th>Min Width</th>
-				<th>Max Width</th>
-				<th>Avg Width</th>
-			</tr>
-			
-			% for colName in colNames:
-			
-			<tr class="onlyBlockLen">
-				<th>${colName}</th>
-				<td class="numeric">${minWidths[colName]}</td>
-				<td class="numeric">${maxWidths[colName]}</td>
-				<td class="numeric">${'{0:.1f}'.format(avgWidths[colName])}</td>
-			</tr>
-			
-			% endfor
-			
-		</table>
-		
 		% for colName in colNames:
 		<p />
 		<table>
 			<tr>
-				<th colspan="9">${colName} Width by Freq</th>
+				<th colspan="9">${html.escape(colName)} Width by Freq</th>
 			</tr>
 			<tr>
 				<th>Width</th>

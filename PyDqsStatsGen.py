@@ -7,8 +7,10 @@ import collections
 import csv
 import getpass
 import heapq
+import html
 import logging
 import os
+import sqlite3
 import sys
 import time
 
@@ -19,8 +21,8 @@ from io import StringIO
 
 from pprint import pprint
 
-flushCount = 100000
 maxRows = 100
+flushCount = 1000
 
 maxHtmlCount = 5
 maxJdbcCount = 10
@@ -36,12 +38,14 @@ srcDelim = ','
 srcQuote = csv.QUOTE_MINIMAL
 srcHeaderRows = 1
 
-makoFullPath = 'DqsStatsHtml.mako'
+makoHtmlFullPath = 'DqsStatsHtml.mako'
+makoJdbcFullPath = 'DqsStatsJdbc.mako'
 
 tgtFullPath = '~/temp/tgtFiles'
 tgtDelim = '|'
 tgtQuote = csv.QUOTE_MINIMAL
-tgtDqsFileName = 'dqsHtml.html'
+tgtDqsStatsHtml = 'dqsStats.html'
+tgtDqsStatsJdbc = 'dqsStats.sqlite'
 
 srcIdColName = 'SRC_RCD_ID'
 apcdSrcIdFmt = '%s.%s.%09d'
@@ -62,6 +66,9 @@ totWidths = {}
 avgWidths = {}
 nonBlanks = {}
 cvgPrcnts = {}
+
+frqHtmlValues = {}
+frqJdbcValues = {}
 
 colCountMisMatches = collections.OrderedDict()
 
@@ -144,7 +151,7 @@ def main():
         MAX_STDOUT_LEVEL = logging.INFO
     
     # instantiate the logger object
-    logger = logging.getLogger(__name__)
+#    logger = logging.getLogger(__name__)
     
     # remove any existing log handlers
     logging.getLogger('').handlers = []
@@ -195,17 +202,28 @@ def main():
     tgtPathExpanded = tgtFullPath
     if tgtFullPath.startswith('~'):
         tgtPathExpanded = os.path.expanduser(tgtFullPath)
-    tgtPathExpanded = os.path.join(tgtPathExpanded, os.path.splitext(os.path.basename(srcPathExpanded))[0] + ".html")
-    tgtPathExpanded = os.path.abspath(tgtPathExpanded)
-    logging.info("TGT file %s" % tgtPathExpanded)
-    if not os.path.exists(os.path.dirname(tgtPathExpanded)):
-        os.makedirs(os.path.dirname(tgtPathExpanded))
+    tgtDqsStatsHtmlExpanded = os.path.join(tgtPathExpanded, os.path.splitext(os.path.basename(srcPathExpanded))[0] + ".html")
+    tgtDqsStatsJdbcExpanded = os.path.join(tgtPathExpanded, os.path.splitext(os.path.basename(srcPathExpanded))[0] + ".sqlite")
+    tgtDqsStatsHtmlExpanded = os.path.abspath(tgtDqsStatsHtmlExpanded)
+    tgtDqsStatsJdbcExpanded = os.path.abspath(tgtDqsStatsJdbcExpanded)
+    logging.info("TGT DQS Statistics HTML file %s" % tgtDqsStatsHtmlExpanded)
+    logging.info("TGT DQS Statistics JDBC file %s" % tgtDqsStatsJdbcExpanded)
+    if not os.path.exists(os.path.dirname(tgtDqsStatsHtmlExpanded)):
+        os.makedirs(os.path.dirname(tgtDqsStatsHtmlExpanded))
+    if not os.path.exists(os.path.dirname(tgtDqsStatsJdbcExpanded)):
+        os.makedirs(os.path.dirname(tgtDqsStatsJdbcExpanded))
         
-    makoPathExpanded = makoFullPath
-    if makoPathExpanded.startswith('~'):
-        makoPathExpanded = os.path.expanduser(makoFullPath)
-    makoPathExpanded = os.path.abspath(makoPathExpanded)
-    logging.info("MAKO file %s" % makoPathExpanded)
+    makoHtmlPathExpanded = makoHtmlFullPath
+    if makoHtmlPathExpanded.startswith('~'):
+        makoHtmlPathExpanded = os.path.expanduser(makoHtmlPathExpanded)
+    makoHtmlPathExpanded = os.path.abspath(makoHtmlPathExpanded)
+    logging.info("DQS Statistics HTML MAKO template file %s" % makoHtmlPathExpanded)
+        
+    makoJdbcPathExpanded = makoJdbcFullPath
+    if makoJdbcPathExpanded.startswith('~'):
+        makoJdbcPathExpanded = os.path.expanduser(makoJdbcPathExpanded)
+    makoJdbcPathExpanded = os.path.abspath(makoJdbcPathExpanded)
+    logging.info("DQS Statistics JDBC MAKO template file %s" % makoJdbcPathExpanded)
         
     colNames = []
     colStats = collections.OrderedDict()
@@ -257,15 +275,6 @@ def main():
             avgWidths[colName] = 0.0
             cvgPrcnts[colName] = 0.0
             
-#    print ("rowNbr,colCount")
-#    for row, colCount in colCountMisMatches.items():
-#        print (row, colCount)
-            
-#    print ("srcColName,minWidth,maxWidth,avgWidth,nonBlanks,cvgPrcnt,unique")    
-#    for colName in colNames:
-#        print ("%s,%d,%d,%f,%d,%f,%s" % (colName, minWidths[colName], maxWidths[colName], avgWidths[colName], nonBlanks[colName], cvgPrcnts[colName] * 100, colName in uniqueColNames))
-            
-#    print ("srcColName,colValue,frequency")    
     frqValueAscs = collections.OrderedDict()
     for colName in colNames:
         frqValueAscs[colName] = {}
@@ -273,27 +282,15 @@ def main():
         # no value frequencies were tracked for them
         if not colName in uniqueColNames:
             frqValueAscs[colName] = sorted(frqValues[colName].items(), key=lambda x:x[0])
-#            for value,frequency in frqValueAsc:
-#                nonBlank = nonBlanks[colName]
-#                if nonBlank > 0:
-#                    frqPct = frequency*100.0/nonBlank
-#                else:
-#                    frqPct = 0
-#                print ("%s,%s,%d,%f" % (colName, value, frequency, frqPct))
             
-#    print ("srcColName,colWidth,frequency")    
     frqWidthAscs = collections.OrderedDict()
     for colName in colNames:
         frqWidthAscs[colName] = sorted(frqWidths[colName].items(), key=lambda x:x[0])
-#        for width,frequency in frqWidthAsc: 
-#            nonBlank = nonBlanks[colName]
-#            if nonBlank > 0:
-#                frqPct = frequency*100.0/nonBlank
-#            else:
-#                frqPct = 0
-#            print ("%s,%d,%d,%f" % (colName, width, frequency, frqPct))
-#            
-#    print ("srcColName,valvalasc,frequency,valfrqasc,frequency,valfrqdsc,frequency")
+
+    # -------------------------------------------------------------------------
+    # Output DQS statistics to HTML file               
+    # -------------------------------------------------------------------------
+
     valueFreqs = collections.OrderedDict()
     for colName in colNames:
         valueFreqs[colName] = {}
@@ -301,29 +298,18 @@ def main():
         valueFreqs[colName]['frqValFrqAsc'] = {}
         valueFreqs[colName]['frqValFrqDsc'] = {}
         if not colName in uniqueColNames:
-            # frqValValAsc = sorted(frqValues[colName].items(), key=lambda x:x[0])[:maxValues] 
-            # frqValFrqAsc = sorted(frqValues[colName].items(), key=lambda x:x[1])[:maxValues] 
-            # frqValFrqDsc = sorted(frqValues[colName].items(), key=lambda x:x[1], reverse=True)[:maxValues]
-            valueFreqs[colName]['frqValValAsc'] = heapq.nsmallest(maxHtmlCount, frqValues[colName].items(), key=lambda x:x[0])
-            valueFreqs[colName]['frqValFrqAsc'] = heapq.nsmallest(maxHtmlCount, frqValues[colName].items(), key=lambda x:x[1])
-            valueFreqs[colName]['frqValFrqDsc'] = heapq.nlargest(maxHtmlCount, frqValues[colName].items(), key=lambda x:x[1])
-            size = len(valueFreqs[colName]['frqValValAsc'])
-            for i in range(0, size):
-                nonBlank = nonBlanks[colName]
-                if nonBlank > 0:
-                    frqValValAscPct = valueFreqs[colName]['frqValValAsc'][i][1]*100.0/nonBlank
-                    frqValFrqAscPct = valueFreqs[colName]['frqValFrqAsc'][i][1]*100.0/nonBlank
-                    frqValFrqDscPct = valueFreqs[colName]['frqValFrqDsc'][i][1]*100.0/nonBlank
-                else:
-                    frqValValAscPct = 0
-                    frqValFrqAscPct = 0
-                    frqValFrqDscPct = 0
-#                if nonBlanks[colName] > 0:
-#                    print ("%s,%s,%d,%f,%s,%d,%f,%s,%d,%f" % (colName, valueFreqs[colName]['frqValValAsc'][i][0], valueFreqs[colName]['frqValValAsc'][i][1], frqValValAscPct, valueFreqs[colName]['frqValFrqAsc'][i][0], valueFreqs[colName]['frqValFrqAsc'][i][1], frqValFrqAscPct, valueFreqs[colName]['frqValFrqDsc'][i][0], valueFreqs[colName]['frqValFrqDsc'][i][1], frqValFrqDscPct))
-               
-    htmWriter = codecs.open(tgtPathExpanded, 'w', 'cp1252')
+            if maxHtmlCount > 0:
+                valueFreqs[colName]['frqValValAsc'] = heapq.nsmallest(maxHtmlCount, frqValues[colName].items(), key=lambda x:x[0])
+                valueFreqs[colName]['frqValFrqAsc'] = heapq.nsmallest(maxHtmlCount, frqValues[colName].items(), key=lambda x:x[1])
+                valueFreqs[colName]['frqValFrqDsc'] = heapq.nlargest(maxHtmlCount, frqValues[colName].items(), key=lambda x:x[1])
+            else:
+                valueFreqs[colName]['frqValValAsc'] = sorted(frqValues[colName].items(), key=lambda x:x[0])
+                valueFreqs[colName]['frqValFrqAsc'] = sorted(frqValues[colName].items(), key=lambda x:x[1])
+                valueFreqs[colName]['frqValFrqDsc'] = sorted(frqValues[colName].items(), key=lambda x:x[1], reverse=True)
+
+    htmlWriter = codecs.open(tgtDqsStatsHtmlExpanded, 'w', 'cp1252')
                     
-    makoTemplate = Template(filename=makoFullPath)
+    makoHtmlTemplate = Template(filename=makoHtmlFullPath)
     buffer = StringIO()
     attrs = {}
     parms = {
@@ -355,10 +341,88 @@ def main():
         'frqWidthAscs':frqWidthAscs
         }
     context = Context(buffer, **parms)
-    makoTemplate.render_context(context)
+    makoHtmlTemplate.render_context(context)
     
-    htmWriter.write(buffer.getvalue())
-    htmWriter.close()
+    htmlWriter.write(buffer.getvalue())
+    htmlWriter.close()
+
+    # -------------------------------------------------------------------------
+    # Output DQS statistics to JDBC file (SQLite)               
+    # -------------------------------------------------------------------------
+
+    valueFreqs.clear()
+    for colName in colNames:
+        valueFreqs[colName] = {}
+        valueFreqs[colName]['frqValValAsc'] = {}
+        valueFreqs[colName]['frqValFrqAsc'] = {}
+        valueFreqs[colName]['frqValFrqDsc'] = {}
+        if not colName in uniqueColNames:
+            if maxJdbcCount > 0:
+                valueFreqs[colName]['frqValValAsc'] = heapq.nsmallest(maxJdbcCount, frqValues[colName].items(), key=lambda x:x[0])
+                valueFreqs[colName]['frqValFrqAsc'] = heapq.nsmallest(maxJdbcCount, frqValues[colName].items(), key=lambda x:x[1])
+                valueFreqs[colName]['frqValFrqDsc'] = heapq.nlargest(maxJdbcCount, frqValues[colName].items(), key=lambda x:x[1])
+            else:
+                valueFreqs[colName]['frqValValAsc'] = sorted(frqValues[colName].items(), key=lambda x:x[0])
+                valueFreqs[colName]['frqValFrqAsc'] = sorted(frqValues[colName].items(), key=lambda x:x[1])
+                valueFreqs[colName]['frqValFrqDsc'] = sorted(frqValues[colName].items(), key=lambda x:x[1], reverse=True)
+
+    sqlConn = sqlite3.connect(tgtDqsStatsJdbcExpanded)
+    sqlCursor = sqlConn.cursor()
+    
+    # TODO: implement SQL as parameterized queries, necessitating NOT using MAKO template
+                    
+    makoJdbcTemplate = Template(filename=makoJdbcFullPath)
+    buffer = StringIO()
+    attrs = {}
+    parms = {
+        'attrs':attrs,
+        'dataProvider': dataProvider,
+        'executorName': executorName,
+        'runDate': runDate,
+        'srcPathExpanded':srcPathExpanded,
+        'srcDelim':srcDelim,
+        'srcIdColName':srcIdColName,
+        'srcHeaderRows':srcHeaderRows,
+        'tgtDelim':tgtDelim,
+        'maxRows':maxRows,
+        'maxHtmlCount':maxHtmlCount,
+        'maxJdbcCount':maxJdbcCount,
+        'tgtDqsStatsHtmlExpanded':tgtDqsStatsHtmlExpanded,
+        'tgtDqsStatsJdbcExpanded':tgtDqsStatsJdbcExpanded,
+        'inputRows':dataRows,
+        'inputCols':len(colNames),
+        'apcdSrcIdFmt':apcdSrcIdFmt,
+        'apcdSrcIdBgnNbr':apcdSrcIdBgnNbr,
+        'apcdSrcIdEndNbr':(apcdSrcIdBgnNbr + dataRows - 1),
+        'colNames':colNames,
+        'nonBlanks':nonBlanks,
+        'valueFreqs':valueFreqs,
+        'minWidths':minWidths,
+        'maxWidths':maxWidths,
+        'avgWidths':avgWidths,
+        'frqValueAscs':frqValueAscs,
+        'frqWidthAscs':frqWidthAscs,
+        'dropTableIfExistsCompliant': True
+        }
+    context = Context(buffer, **parms)
+    makoJdbcTemplate.render_context(context)
+    
+    sqlCmd = ''
+    lines = buffer.getvalue().split(os.linesep)
+    for line in lines:
+        sqlCmd = sqlCmd + line.strip()
+        if line.strip().endswith(';'):
+            # print (sqlCmd)
+            # print ('')
+            try:
+                sqlCursor.execute(sqlCmd)
+            except Exception as e:
+                print (sqlCmd)
+                print (str(e))
+            sqlCmd = ''
+    
+    sqlConn.commit()
+    sqlConn.close()
     
     return
 
@@ -411,7 +475,7 @@ def analyzeData(rowCells, colNames, uniqueColNames, row):
                 except:
                     frqValues[colName][value] = 1
             else:
-                frqValues[colName] = 1
+                frqValues[colName] = {}
             cells += 1
     else:
         colCountMisMatches[row] = len(rowCells)
