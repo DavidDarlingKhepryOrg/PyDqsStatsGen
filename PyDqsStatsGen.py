@@ -5,10 +5,9 @@
 import codecs
 import collections
 import csv
-import datetime
+import getpass
 import heapq
 import logging
-import mako
 import os
 import sys
 import time
@@ -21,14 +20,15 @@ from io import StringIO
 from pprint import pprint
 
 flushCount = 100000
-maxRows = 0
+maxRows = 100
 
 maxHtmlCount = 5
 maxJdbcCount = 10
 
 iniFullPath = ''
 
-logFullPath = '~/temp/logFiles/PyIniGenerator.log'
+dataProvider = 'NPPES'
+executorName = ''
 
 srcFullPath = '~/data/voters/nc/ncvoter48.txt'
 srcFullPath = '~/data/apcd/NPPES_Data_Dissemination_November_2014/npidata_20050523-20141112.csv'
@@ -47,6 +47,8 @@ srcIdColName = 'SRC_RCD_ID'
 apcdSrcIdFmt = '%s.%s.%09d'
 apcdSrcIdBgnNbr = 1
 apcdSrcIdEndNbr = apcdSrcIdBgnNbr
+
+logFullPath = '~/temp/logFiles/PyIniGenerator.log'
 
 initVals = {'string':0, 'empty':0, 'whitespace':0, 'alphanumeric':0, 'alpha':0, 'lower':0, 'upper':0, 'date':0, 'datetime':0, 'decimal':0, 'digit':0, 'numeric':0}    
 
@@ -176,6 +178,9 @@ def main():
     # logging.error('Log file located at %s', logFileNameExpanded)
 
     # -------------------------------------------------------------------------
+    
+    executorName = getpass.getuser()
+    runDate = time.strftime('%A %d %b %Y %I:%M %p %Z')
     
     srcPathExpanded = srcFullPath
     if srcFullPath.startswith('~'):
@@ -323,6 +328,9 @@ def main():
     attrs = {}
     parms = {
         'attrs':attrs,
+        'dataProvider': dataProvider,
+        'executorName': executorName,
+        'runDate': runDate,
         'srcPathExpanded':srcPathExpanded,
         'srcDelim':srcDelim,
         'srcIdColName':srcIdColName,

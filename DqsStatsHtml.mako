@@ -102,15 +102,15 @@
 		<table style="border: none;">
 			<tr>
 				<th style="border: none;">Source:</th>
-				<td style="border: none;">$dataProvider</td>
+				<td style="border: none;">${dataProvider}</td>
 			</tr>
 			<tr>
 				<th style="border: none;">Run by:</th>
-				<td style="border: none;">$executorName</td>
+				<td style="border: none;">${executorName}</td>
 			</tr>
 			<tr>
 				<th style="border: none;">Run date:</th>
-				<td style="border: none;">$datTool.long</td>
+				<td style="border: none;">${runDate}</td>
 			</tr>
 		</table>
 		<p />
@@ -215,7 +215,7 @@
 				<th colspan="9">Source File Column Value Frequencies</th>
 			</tr>
 			<tr>
-				<th colspan="9">$executionDate</th>
+				<th colspan="9">${runDate}</th>
 			</tr>
 		</table>
 		
