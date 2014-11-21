@@ -249,13 +249,19 @@
 				<th>% of Total</th>
 			</tr>
 
+			% if colName in uniqueColNames:
+			<tr class="leftBlockValLft">
+				<td colspan="9">No results were calculated, as column was specified as having all unique values</td>
+			</tr>
+			% else:
+
                   <%
                      attrs['maxVals'] = len(valueFreqs[colName]['frqValValAsc'])
                   %>
 			
                   % for i in range(attrs['maxVals']):
 			
-      		<tr>
+	      		<tr>
     				<th class="leftBlockValLft">${html.escape(valueFreqs[colName]['frqValValAsc'][i][0])}</th>
     				<td class="leftBlockValRgt">${valueFreqs[colName]['frqValValAsc'][i][1]}</td>
                           % if nonBlanks[colName] > 0:
@@ -277,8 +283,10 @@
                           % else:
            				<td class="leftBlockValRgt">0.00%</td>
                           % endif
-    			</tr>
-      		% endfor
+	    		</tr>
+	      		% endfor
+			
+			% endif
 		</table>
 		% endfor
 

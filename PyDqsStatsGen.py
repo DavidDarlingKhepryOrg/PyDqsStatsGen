@@ -21,8 +21,8 @@ from io import StringIO
 
 from pprint import pprint
 
-maxRows = 100
-flushCount = 1000
+maxRows = 0
+flushCount = 10000
 
 maxHtmlCount = 5
 maxJdbcCount = 10
@@ -73,7 +73,7 @@ frqJdbcValues = {}
 colCountMisMatches = collections.OrderedDict()
 
 uniqueColNames = ['voter_reg_num','ncid']
-uniqueColNames = []
+uniqueColNames = ['NPI']
 
 # =============================================================================    
 # Inline class definitions
@@ -332,6 +332,7 @@ def main():
         'apcdSrcIdBgnNbr':apcdSrcIdBgnNbr,
         'apcdSrcIdEndNbr':(apcdSrcIdBgnNbr + dataRows - 1),
         'colNames':colNames,
+        'uniqueColNames':uniqueColNames,
         'nonBlanks':nonBlanks,
         'valueFreqs':valueFreqs,
         'minWidths':minWidths,
@@ -395,6 +396,7 @@ def main():
         'apcdSrcIdBgnNbr':apcdSrcIdBgnNbr,
         'apcdSrcIdEndNbr':(apcdSrcIdBgnNbr + dataRows - 1),
         'colNames':colNames,
+        'uniqueColNames':uniqueColNames,
         'nonBlanks':nonBlanks,
         'valueFreqs':valueFreqs,
         'minWidths':minWidths,
