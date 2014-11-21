@@ -21,7 +21,7 @@ from io import StringIO
 from pprint import pprint
 
 flushCount = 100000
-maxRows = 1000
+maxRows = 0
 
 maxHtmlCount = 5
 maxJdbcCount = 10
