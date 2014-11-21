@@ -36,7 +36,7 @@ srcDelim = ','
 srcQuote = csv.QUOTE_MINIMAL
 srcHeaderRows = 1
 
-makoFullPath = 'DqsStatsHtml.txt'
+makoFullPath = 'DqsStatsHtml.mako'
 
 tgtFullPath = '~/temp/tgtFiles'
 tgtDelim = '|'
