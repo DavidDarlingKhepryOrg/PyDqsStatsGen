@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# -*- coding: utf-8 -*-
+# TODO: output statistics to Sql Server database
 
 import codecs
 import collections
@@ -9,7 +9,10 @@ import getpass
 import heapq
 import html
 import logging
+import mysql.connector
 import os
+import pymssql
+import psycopg2
 import sqlite3
 import sys
 import time
@@ -21,18 +24,18 @@ from io import StringIO
 
 from pprint import pprint
 
-maxRows = 0
+maxRows = 1000000
 flushCount = 10000
 
 maxHtmlCount = 5
-maxJdbcCount = 10
+maxJdbcCount = 1
 
 iniFullPath = ''
 
 dataProvider = 'NPPES'
 executorName = ''
 
-srcFullPath = '~/data/voters/nc/ncvoter48.txt'
+# srcFullPath = '~/data/voters/nc/ncvoter48.txt'
 srcFullPath = '~/data/apcd/NPPES_Data_Dissemination_November_2014/npidata_20050523-20141112.csv'
 srcDelim = ','
 srcQuote = csv.QUOTE_MINIMAL
@@ -46,6 +49,54 @@ tgtDelim = '|'
 tgtQuote = csv.QUOTE_MINIMAL
 tgtDqsStatsHtml = 'dqsStats.html'
 tgtDqsStatsJdbc = 'dqsStats.sqlite'
+
+# PostgreSQL parameters
+jdbcType = 'pgsql'
+jdbcHost = 'localhost'
+jdbcPort = 5432
+jdbcDatabase = 'dqsvalidator'
+jdbcUID = 'dqsvalidator'
+jdbcPWD = '[redacted]'
+jdbcDropCompliant = True
+jdbcParms = {
+    'host':jdbcHost,
+    'port': jdbcPort,
+    'dbname':jdbcDatabase,
+    'user':jdbcUID,
+    'password':jdbcPWD        
+    }
+
+# MySQL parameters
+jdbcType = 'mysql'
+jdbcHost = 'localhost'
+jdbcPort = 3306
+jdbcDatabase = 'dqsvalidator'
+jdbcUID = 'dqsvalidator'
+jdbcPWD = '[redacted]'
+jdbcDropCompliant = True
+jdbcParms = {
+    'host':jdbcHost,
+    'port': jdbcPort,
+    'database':jdbcDatabase,
+    'user':jdbcUID,
+    'password':jdbcPWD        
+    }
+
+# MsSQL parameters
+jdbcType = 'mssql'
+jdbcHost = 'Khepry-ASUS-LT1'
+jdbcPort = 1433
+jdbcDatabase = 'dqsvalidator'
+jdbcUID = 'dqsvalidator'
+jdbcPWD = '[redacted]'
+jdbcDropCompliant = False
+jdbcParms = {
+    'server':jdbcHost + ":" + str(jdbcPort),
+    'port': jdbcPort,
+    'database':jdbcDatabase,
+    'user':jdbcUID,
+    'password':jdbcPWD        
+    }
 
 srcIdColName = 'SRC_RCD_ID'
 apcdSrcIdFmt = '%s.%s.%09d'
@@ -366,11 +417,12 @@ def main():
                 valueFreqs[colName]['frqValValAsc'] = sorted(frqValues[colName].items(), key=lambda x:x[0])
                 valueFreqs[colName]['frqValFrqAsc'] = sorted(frqValues[colName].items(), key=lambda x:x[1])
                 valueFreqs[colName]['frqValFrqDsc'] = sorted(frqValues[colName].items(), key=lambda x:x[1], reverse=True)
-
-    sqlConn = sqlite3.connect(tgtDqsStatsJdbcExpanded)
-    sqlCursor = sqlConn.cursor()
     
     # TODO: implement SQL as parameterized queries, necessitating NOT using MAKO template
+
+    # push statistic records to SQLite database
+    sqliteConn = sqlite3.connect(tgtDqsStatsJdbcExpanded)
+    sqliteCursor = sqliteConn.cursor()
                     
     makoJdbcTemplate = Template(filename=makoJdbcFullPath)
     buffer = StringIO()
@@ -404,7 +456,7 @@ def main():
         'avgWidths':avgWidths,
         'frqValueAscs':frqValueAscs,
         'frqWidthAscs':frqWidthAscs,
-        'dropTableIfExistsCompliant': True
+        'jdbcDropCompliant': True # True for SQLite databases
         }
     context = Context(buffer, **parms)
     makoJdbcTemplate.render_context(context)
@@ -417,14 +469,83 @@ def main():
             # print (sqlCmd)
             # print ('')
             try:
-                sqlCursor.execute(sqlCmd)
+                sqliteCursor.execute(sqlCmd)
             except Exception as e:
                 print (sqlCmd)
                 print (str(e))
+                break;
             sqlCmd = ''
     
-    sqlConn.commit()
-    sqlConn.close()
+    sqliteConn.commit()
+    sqliteConn.close()
+        
+    # push statistic records to traditional database
+
+    # if jdbcType not found
+    # default to PostgreSQL
+    jdbcConn = None
+    if jdbcType.lower() == 'mysql':
+        jdbcConn = mysql.connector.connect(**jdbcParms)
+    elif jdbcType.lower() == 'mssql':
+        jdbcConn = pymssql.connect(**jdbcParms)
+    else:
+        jdbcConn = psycopg2.connect(**jdbcParms)
+    jdbcCursor = jdbcConn.cursor()
+                    
+    makoJdbcTemplate = Template(filename=makoJdbcFullPath)
+    buffer = StringIO()
+    attrs = {}
+    parms = {
+        'attrs':attrs,
+        'dataProvider': dataProvider,
+        'executorName': executorName,
+        'runDate': runDate,
+        'srcPathExpanded':srcPathExpanded,
+        'srcDelim':srcDelim,
+        'srcIdColName':srcIdColName,
+        'srcHeaderRows':srcHeaderRows,
+        'tgtDelim':tgtDelim,
+        'maxRows':maxRows,
+        'maxHtmlCount':maxHtmlCount,
+        'maxJdbcCount':maxJdbcCount,
+        'tgtDqsStatsHtmlExpanded':tgtDqsStatsHtmlExpanded,
+        'tgtDqsStatsJdbcExpanded':tgtDqsStatsJdbcExpanded,
+        'inputRows':dataRows,
+        'inputCols':len(colNames),
+        'apcdSrcIdFmt':apcdSrcIdFmt,
+        'apcdSrcIdBgnNbr':apcdSrcIdBgnNbr,
+        'apcdSrcIdEndNbr':(apcdSrcIdBgnNbr + dataRows - 1),
+        'colNames':colNames,
+        'uniqueColNames':uniqueColNames,
+        'nonBlanks':nonBlanks,
+        'valueFreqs':valueFreqs,
+        'minWidths':minWidths,
+        'maxWidths':maxWidths,
+        'avgWidths':avgWidths,
+        'frqValueAscs':frqValueAscs,
+        'frqWidthAscs':frqWidthAscs,
+        'jdbcDropCompliant': jdbcDropCompliant # True for PostgreSQL and MySQL databases, False for MsSQL
+        }
+    context = Context(buffer, **parms)
+    makoJdbcTemplate.render_context(context)
+    
+    sqlCmd = ''
+    lines = buffer.getvalue().split(os.linesep)
+    for line in lines:
+        sqlCmd = sqlCmd + line.strip()
+        if line.strip().endswith(';'):
+            # print (sqlCmd)
+            # print ('')
+            try:
+                jdbcCursor.execute(sqlCmd)
+            except Exception as e:
+                print (sqlCmd)
+                print (str(e))
+                break;
+            sqlCmd = ''
+
+    jdbcConn.commit()
+    jdbcConn.close()
     
     return
 

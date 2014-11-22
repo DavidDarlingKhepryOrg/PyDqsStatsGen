@@ -1,4 +1,4 @@
-% if dropTableIfExistsCompliant:
+% if jdbcDropCompliant:
 DROP TABLE IF EXISTS DqsFileStats;
 % else:
 IF EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'DqsFileStats') DROP TABLE DqsFileStats;
@@ -61,7 +61,7 @@ insert into DqsFileStats (
 		'${str.replace(tgtDqsStatsHtmlExpanded,"'","''")}',
 		'${str.replace(tgtDqsStatsJdbcExpanded,"'","''")}');
 
-% if dropTableIfExistsCompliant:
+% if jdbcDropCompliant:
 <%! import string %>
 DROP TABLE IF EXISTS DqsMinMaxAvgCvgStats;
 % else:
@@ -71,11 +71,11 @@ CREATE TABLE DqsMinMaxAvgCvgStats (
     dataProvider VARCHAR(50),
     runDate VARCHAR(50),
     runBy VARCHAR(50),
-    srcFile VARCHAR(50),
-    srcColName VARCHAR(50),
-	minWidth,
-	maxWidth,
-	avgWidth,
+    srcFile VARCHAR(255),
+    srcColName VARCHAR(255),
+	minWidth INT,
+	maxWidth INT,
+	avgWidth FLOAT,
     nonBlanks INT,
 	cvgPercnt FLOAT
 );
@@ -106,7 +106,7 @@ insert into DqsMinMaxAvgCvgStats (
 	% endif
 % endfor
 
-% if dropTableIfExistsCompliant:
+% if jdbcDropCompliant:
 DROP TABLE IF EXISTS DqsValueFreqs;
 % else:
 IF EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'DqsValueFreqs') DROP TABLE DqsValueFreqs;
@@ -116,7 +116,7 @@ CREATE TABLE DqsValueFreqs (
     runDate VARCHAR(50),
     runBy VARCHAR(50),
     srcFile VARCHAR(255),
-    srcColName VARCHAR(50),
+    srcColName VARCHAR(255),
     valValue VARCHAR(255),
     valCount INT,
     valValPctOfTotal FLOAT,
@@ -176,7 +176,7 @@ insert into DqsValueFreqs (
 % endfor
 % endfor
 
-% if dropTableIfExistsCompliant:
+% if jdbcDropCompliant:
 DROP TABLE IF EXISTS DqsWidthFreqs;
 % else:
 IF EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'DqsWidthFreqs') DROP TABLE DqsWidthFreqs;
@@ -186,7 +186,7 @@ CREATE TABLE DqsWidthFreqs (
     runDate VARCHAR(50),
     runBy VARCHAR(50),
     srcFile VARCHAR(255),
-    srcColName VARCHAR(50),
+    srcColName VARCHAR(255),
     widthValue INT,
     widthCount INT,
     widthPctOfTotal FLOAT  
