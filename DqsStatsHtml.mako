@@ -253,6 +253,10 @@
 			<tr class="leftBlockValLft">
 				<td colspan="9">No results were calculated, as column was specified as having all unique values</td>
 			</tr>
+			% elif colName in ignoreColNames:
+			<tr class="leftBlockValLft">
+				<td colspan="9">No results were calculated, as column was specified to be ignored via program settings</td>
+			</tr>
 			% else:
 
                   <%

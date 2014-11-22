@@ -24,7 +24,7 @@ from io import StringIO
 
 from pprint import pprint
 
-maxRows = 1000000
+maxRows = 10000
 flushCount = 10000
 
 maxHtmlCount = 5
@@ -40,6 +40,11 @@ srcFullPath = '~/data/apcd/NPPES_Data_Dissemination_November_2014/npidata_200505
 srcDelim = ','
 srcQuote = csv.QUOTE_MINIMAL
 srcHeaderRows = 1
+
+uniqueColNames = ['voter_reg_num','ncid']
+uniqueColNames = ['NPI']
+ignoreColNames = ['voter_reg_num','ncid']
+ignoreColNames = ['Entity Type Code']
 
 makoHtmlFullPath = 'DqsStatsHtml.mako'
 makoJdbcFullPath = 'DqsStatsJdbc.mako'
@@ -122,9 +127,6 @@ frqHtmlValues = {}
 frqJdbcValues = {}
 
 colCountMisMatches = collections.OrderedDict()
-
-uniqueColNames = ['voter_reg_num','ncid']
-uniqueColNames = ['NPI']
 
 # =============================================================================    
 # Inline class definitions
@@ -293,7 +295,7 @@ def main():
             colNames, colStats = analyzeHead(rowData, colNames, colStats)
         else:
             dataRows += 1
-            analyzeData(rowData, colNames,uniqueColNames, rows)
+            analyzeData(rowData, colNames,uniqueColNames, ignoreColNames, rows)
         if maxRows > 0 and rows > maxRows:
             break
         if dataRows > 0 and dataRows % flushCount == 0:
@@ -331,7 +333,7 @@ def main():
         frqValueAscs[colName] = {}
         # bypass columns with unique values since
         # no value frequencies were tracked for them
-        if not colName in uniqueColNames:
+        if (not colName in uniqueColNames) and (not colName in ignoreColNames):
             frqValueAscs[colName] = sorted(frqValues[colName].items(), key=lambda x:x[0])
             
     frqWidthAscs = collections.OrderedDict()
@@ -348,7 +350,7 @@ def main():
         valueFreqs[colName]['frqValValAsc'] = {}
         valueFreqs[colName]['frqValFrqAsc'] = {}
         valueFreqs[colName]['frqValFrqDsc'] = {}
-        if not colName in uniqueColNames:
+        if not colName in uniqueColNames and not colName in ignoreColNames:
             if maxHtmlCount > 0:
                 valueFreqs[colName]['frqValValAsc'] = heapq.nsmallest(maxHtmlCount, frqValues[colName].items(), key=lambda x:x[0])
                 valueFreqs[colName]['frqValFrqAsc'] = heapq.nsmallest(maxHtmlCount, frqValues[colName].items(), key=lambda x:x[1])
@@ -384,6 +386,7 @@ def main():
         'apcdSrcIdEndNbr':(apcdSrcIdBgnNbr + dataRows - 1),
         'colNames':colNames,
         'uniqueColNames':uniqueColNames,
+        'ignoreColNames':ignoreColNames,
         'nonBlanks':nonBlanks,
         'valueFreqs':valueFreqs,
         'minWidths':minWidths,
@@ -408,7 +411,7 @@ def main():
         valueFreqs[colName]['frqValValAsc'] = {}
         valueFreqs[colName]['frqValFrqAsc'] = {}
         valueFreqs[colName]['frqValFrqDsc'] = {}
-        if not colName in uniqueColNames:
+        if not colName in uniqueColNames and not colName in ignoreColNames:
             if maxJdbcCount > 0:
                 valueFreqs[colName]['frqValValAsc'] = heapq.nsmallest(maxJdbcCount, frqValues[colName].items(), key=lambda x:x[0])
                 valueFreqs[colName]['frqValFrqAsc'] = heapq.nsmallest(maxJdbcCount, frqValues[colName].items(), key=lambda x:x[1])
@@ -449,6 +452,7 @@ def main():
         'apcdSrcIdEndNbr':(apcdSrcIdBgnNbr + dataRows - 1),
         'colNames':colNames,
         'uniqueColNames':uniqueColNames,
+        'ignoreColNames':ignoreColNames,
         'nonBlanks':nonBlanks,
         'valueFreqs':valueFreqs,
         'minWidths':minWidths,
@@ -517,6 +521,7 @@ def main():
         'apcdSrcIdEndNbr':(apcdSrcIdBgnNbr + dataRows - 1),
         'colNames':colNames,
         'uniqueColNames':uniqueColNames,
+        'ignoreColNames':ignoreColNames,
         'nonBlanks':nonBlanks,
         'valueFreqs':valueFreqs,
         'minWidths':minWidths,
@@ -572,7 +577,7 @@ def analyzeHead(rowCells, colNames, colStats):
         cvgPrcnts[colName] = 0.0
     return colNames, colStats
     
-def analyzeData(rowCells, colNames, uniqueColNames, row):
+def analyzeData(rowCells, colNames, uniqueColNames, ignoreColNames, row):
     cells = 0
     # only evaluate rows with
     # expected number of columns
@@ -592,7 +597,7 @@ def analyzeData(rowCells, colNames, uniqueColNames, row):
                 maxWidths[colName] = width
             if width < minWidths[colName]:
                 minWidths[colName] = width
-            if not colName in uniqueColNames:
+            if not colName in uniqueColNames and not colName in ignoreColNames:
                 try:
                     frqValues[colName][value] += 1
                 except:
