@@ -2,6 +2,7 @@
 
 import codecs
 import collections
+import configparser
 import csv
 import getpass
 import heapq
@@ -14,115 +15,17 @@ import sqlite3
 import sys
 import time
 
-# imports to support mako templates
+# import(s) to support INI file parsing
+from configparser import BasicInterpolation, ExtendedInterpolation
+
+# import(s) to support MAKO template processing
 from mako.template import Template
 from mako.runtime import Context
 from io import StringIO
 
 from pprint import pprint
 
-maxRows = 10000
-flushCount = 10000
-
-# maximum allowed column
-# count mismatches before
-# terminating the program
-maxColCountMisMatches = 0
-
-maxHtmlCount = 5
-maxJdbcCount = 10
-
-iniFullPath = ''
-
-dataProvider = 'NPPES'
-executorName = ''
-
-# srcFullPath = '~/data/voters/nc/ncvoter48.txt'
-srcFullPath = '~/data/apcd/NPPES_Data_Dissemination_November_2014/npidata_20050523-20141112.csv'
-srcDelim = ','
-srcQuote = csv.QUOTE_MINIMAL
-srcHeaderRows = 1
-
-# an empty ACCEPT list will signal the
-# processing of ALL of the row's columns
-acceptColNames = ['NPI','Entity Type Code','Replacement NPI','Employer Identification Number (EIN)']
-# acceptColNames = []
-
-# IGNORE list will suppress calculations of the
-# value frequency statistics for the specified columns
-ignoreColNames = ['voter_reg_num','ncid']
-ignoreColNames = ['Entity Type Code']
-
-# UNIQUE list will suppress calculations of the
-# value frequency statistics for the specified columns
-uniqueColNames = ['voter_reg_num','ncid']
-uniqueColNames = ['NPI']
-
-makoHtmlFullPath = 'DqsStatsHtml.mako'
-makoJdbcFullPath = 'DqsStatsJdbc.mako'
-
-tgtFullPath = '~/temp/tgtFiles'
-tgtDelim = '|'
-tgtQuote = csv.QUOTE_MINIMAL
-tgtDqsStatsHtml = 'dqsStats.html'
-tgtDqsStatsJdbc = 'dqsStats.sqlite'
-
-# PostgreSQL parameters
-jdbcType = 'pgsql'
-jdbcHost = 'localhost'
-jdbcPort = 5432
-jdbcDatabase = 'dqsvalidator'
-jdbcUID = 'dqsvalidator'
-jdbcPWD = '[redacted]'
-jdbcDropCompliant = True
-jdbcParms = {
-    'host':jdbcHost,
-    'port': jdbcPort,
-    'dbname':jdbcDatabase,
-    'user':jdbcUID,
-    'password':jdbcPWD        
-    }
-
-# MySQL parameters
-jdbcType = 'mysql'
-jdbcHost = 'localhost'
-jdbcPort = 3306
-jdbcDatabase = 'dqsvalidator'
-jdbcUID = 'dqsvalidator'
-jdbcPWD = '[redacted]'
-jdbcDropCompliant = True
-jdbcParms = {
-    'host':jdbcHost,
-    'port': jdbcPort,
-    'database':jdbcDatabase,
-    'user':jdbcUID,
-    'password':jdbcPWD        
-    }
-
-# SQL Server parameters
-jdbcType = 'mssql'
-jdbcHost = 'Khepry-ASUS-LT1'
-jdbcPort = 1433
-jdbcDatabase = 'dqsvalidator'
-jdbcUID = 'dqsvalidator'
-jdbcPWD = '[redacted]'
-jdbcDropCompliant = False
-jdbcParms = {
-    'server':jdbcHost + ":" + str(jdbcPort),
-    'port': jdbcPort,
-    'database':jdbcDatabase,
-    'user':jdbcUID,
-    'password':jdbcPWD        
-    }
-
-srcIdColName = 'SRC_RCD_ID'
-apcdSrcIdFmt = '%s.%s.%09d'
-apcdSrcIdBgnNbr = 1
-apcdSrcIdEndNbr = apcdSrcIdBgnNbr
-
-logFullPath = '~/temp/logFiles/PyIniGenerator.log'
-
-initVals = {'string':0, 'empty':0, 'whitespace':0, 'alphanumeric':0, 'alpha':0, 'lower':0, 'upper':0, 'date':0, 'datetime':0, 'decimal':0, 'digit':0, 'numeric':0}    
+iniFilePath = 'PyDqsStatsGen.ini'
 
 colUniqs = {}
 
@@ -169,39 +72,117 @@ def main():
 
     successful = False
     err = None
+
+    global iniFilePath
+
+    # obtain any command-line arguments
+    # overriding any values set so far
+    nextArg = ""
+    for argv in sys.argv:
+        if nextArg != "":
+            if nextArg == "iniFilePath":
+                iniFilePath = argv
+            nextArg = ""
+        else:
+            if argv.lower() == "--inifilepath" or argv.lower() == "-inifilepath":
+                nextArg = "iniFilePath"
+        
+    # expand any leading tilde
+    # to the user's home path
+    if iniFilePath.startswith("~"):
+        iniFilePath = os.path.expanduser(iniFilePath)
+    
+    iniFilePath = os.path.abspath(iniFilePath)
+    
+    print ("Attempting to load INI file: %s" % iniFilePath)
+    
+    # if INI file path does not exist
+    if not os.path.exists(iniFilePath):
+        # output error message
+        sys.stderr.write('iniFilePath does not exist: "%s"\n' % iniFilePath)
+        # cease further processing
+        sys.exit(0)
+    
+    # obtain the settings
+    # from the INI file path
+    config = configparser.ConfigParser(interpolation=ExtendedInterpolation(), delimiters=('='))
+    config.optionxform = str #this will preserve the case of the section names
+    config.read(iniFilePath)
     
     # -----------------------------
     # Logging settings
     # -----------------------------
-    # maximum logging level that
-    # will output to the STDOUT stream
-    MAX_STDOUT_LEVEL = logging.INFO
 
-    logPathExpanded = logFullPath
-        
+    logFilePathExpanded = 'PyDqsStatsGen.log'
     # if the log file
     # starts with a tilde (~)
-    if logFullPath.startswith("~"):
+    if logFilePathExpanded.startswith("~"):
         # derive the log file name's expanded path
-        logPathExpanded = os.path.expanduser(logFullPath)
+        logFilePathExpanded = os.path.expanduser(logFilePathExpanded)
     
     # if the expanded log file name contains a folder prefix
-    if os.path.dirname(logPathExpanded) != '':    
+    if os.path.dirname(logFilePathExpanded) != '':    
         # if the expanded log file's parent folder does not yet exist
-        if not os.path.exists(os.path.dirname(logPathExpanded)):
+        if not os.path.exists(os.path.dirname(logFilePathExpanded)):
             try:
                 # create the log file's parent folder
-                os.makedirs(os.path.dirname(logPathExpanded))
+                os.makedirs(os.path.dirname(logFilePathExpanded))
             except Exception as e:
                 logging.error(str(e))
     
     # if the specified log file exists            
-    if os.path.exists(logPathExpanded):
+    if os.path.exists(logFilePathExpanded):
         # delete it
-        os.remove(logPathExpanded)
+        os.remove(logFilePathExpanded)
+    
+    # maximum logging level that
+    # will output to the STDOUT stream
+    MAX_STDOUT_LEVEL = logging.INFO
+    
+    # obtain the [folders] section's settings from the INI file
+    outFolder = config['folders'].get('outFolder', '~/temp')
+    logSubFolder = config['folders'].get('logSubFolder', 'logFiles')
+    tgtSubFolder = config['folders'].get('tgtSubFolder', 'tgtFiles')
 
-    maxStdOutLvl = "INFO"
+    tgtFullPath = os.path.join(outFolder, tgtSubFolder)
 
+    # obtain the [logging] section's settings from the INI file
+    logFileName = config['logging'].get('logFileName', 'PyDqsStatsGen.log')
+    maxStdOutLvl = config['logging'].get('MAX_STDOUT_LEVEL', 'info')
+    
+    # if log file name
+    # was not specified    
+    if logFileName == "":
+        # default the log file name
+        logFileName = "PyDqsStatsGen.log"
+
+    logFullPathExpanded = logFileName
+    # if the log file
+    # starts with a tilde (~)
+    if logFullPathExpanded.startswith("~"):
+        # derive the log file name's expanded path
+        logFullPathExpanded = os.path.expanduser(logFullPathExpanded)
+
+    # if the expanded log file name does NOT contain a folder prefix
+    if os.path.dirname(logFullPathExpanded) == '':
+        # expand the output folder joined to the default log subfolder joined to the log file name
+        logFullPathExpanded = os.path.expanduser(os.path.join(outFolder, logSubFolder, logFullPathExpanded))
+    
+    # if the expanded log file name contains a folder prefix
+    if os.path.dirname(logFullPathExpanded) != '':    
+        # if the expanded log file's parent folder does not yet exist
+        if not os.path.exists(os.path.dirname(logFullPathExpanded)):
+            try:
+                # create the log file's parent folder
+                os.makedirs(os.path.dirname(logFullPathExpanded))
+            except Exception as e:
+                logging.error(str(e))
+    
+    # if the specified log file exists            
+    if os.path.exists(logFullPathExpanded):
+        # delete it
+        os.remove(logFullPathExpanded)
+    
     if maxStdOutLvl.lower() == 'info':
         MAX_STDOUT_LEVEL = logging.INFO
     elif maxStdOutLvl.lower() == 'debug':
@@ -216,7 +197,7 @@ def main():
         MAX_STDOUT_LEVEL = logging.INFO
     
     # instantiate the logger object
-#    logger = logging.getLogger(__name__)
+    # logger = logging.getLogger(__name__)
     
     # remove any existing log handlers
     logging.getLogger('').handlers = []
@@ -225,7 +206,7 @@ def main():
     logging.basicConfig(level=MAX_STDOUT_LEVEL,
                         format='%(asctime)s\t%(levelname)s\t%(name)s\t%(message)s',
                         datefmt='%Y-%m-%d %H:%M',
-                        filename=logPathExpanded,
+                        filename=logFullPathExpanded,
                         filemode='w')
     
     # attach stdout to the logger
@@ -244,21 +225,120 @@ def main():
     
     # output a message to the log file
     # with the log file's location info
-    logging.info('Log file located at %s', logPathExpanded)
-    # logging.debug('DEBUG: Log file located at %s', logFileNameExpanded)
-    # logging.warning('WARNING: Log file located at %s', logFileNameExpanded)
-    # logging.error('Log file located at %s', logFileNameExpanded)
+    logging.info('Log file: %s', logFullPathExpanded)
+    # logging.debug('DEBUG: Log file located at %s', logFilePathExpanded)
+    # logging.warning('WARNING: Log file located at %s', logFilePathExpanded)
+    # logging.error('Log file located at %s', logFilePathExpanded)
 
     # -------------------------------------------------------------------------
+
+    # max data rows
+    # to be processed
+    # 0 means unlimited
+    maxRows = int(config['DEFAULT'].get('maxRows', '0'))
     
+    # show progress messages
+    # every 'flushCount' number
+    # of data rows
+    flushCount = int(config['DEFAULT'].get('flushCount', '10000'))
+    
+    # maximum allowed column
+    # count mismatches before
+    # terminating the program
+    maxColCountMisMatches = int(config['DEFAULT'].get('maxColCountMisMatches', '0'))
+    
+    # max number of HTML value
+    # frequencies per column to report
+    maxHtmlCount = int(config['DEFAULT'].get('maxHtmlCount', '5'))
+    
+    # max number of JDBC value
+    # frequencies per column to report
+    maxJdbcCount = int(config['DEFAULT'].get('maxJdbcCount', '10'))
+    
+    # the date of execution's output format string    
+    runDateFormatString = config['DEFAULT'].get('runDateFormatString', '%A %d %b %Y %I:%M %p %Z')
+    
+    # MAKO template path
+    # for HTML output generation
+    makoHtmlTemplateName = config['DEFAULT'].get('makoHtmlTemplateName', 'DqsStatsHtml.mako')
+
+    # MAKO template path
+    # for JDBC output generation
+    makoJdbcTemplateName = config['DEFAULT'].get('makoJdbcTemplateName', 'DqsStatsJdbc.mako')
+     
+    srcFullPath = config['srcSpecs'].get('srcFullPath')
+    srcDelim = config['srcSpecs'].get('srcDelim', ',')
+    srcHeaderRows = int(config['srcSpecs'].get('srcHeaderRows', '1'))
+    srcQuote = csv.QUOTE_MINIMAL
+
+    # data provider's acronym    
+    dataProvider = config['srcSpecs'].get('dataProvider', 'unspecified')
+    
+    # comma-delimited list of columns upon
+    # which statistics are to be calculated,
+    # an empty ACCEPT list will signal the
+    # processing of ALL of the row's columns
+    acceptColNames = config['srcSpecs'].get('acceptColNames','').split(',')
+    
+    # comma-delimited IGNORE list will suppress calculations
+    # of the value frequency statistics for the specified columns
+    # ignoreColNames = 'voter_reg_num','ncid'
+    ignoreColNames = config['srcSpecs'].get('ignoreColNames','').split(',')
+    
+    # comma-delimited UNIQUE list will suppress calculations
+    # of the value frequency statistics for the specified columns
+    # uniqueColNames = 'voter_reg_num','ncid'
+    uniqueColNames = config['srcSpecs'].get('uniqueColNames','').split(',')
+
+    # obtain the JDBC database connection parameters    
+    jdbcType = config['jdbcSpecs'].get('jdbcType', 'pgsql').lower()
+    jdbcHost = config['jdbcSpecs'].get('jdbcHost', 'localhost')
+    jdbcPort = int(config['jdbcSpecs'].get('jdbcPort', '5432')) # defaults to PostgreSQL's port
+    jdbcDatabase = config['jdbcSpecs'].get('jdbcDatabase', 'dqsvalidator')
+    jdbcUID = config['jdbcSpecs'].get('jdbcUID', 'dqsvalidator')
+    jdbcPWD = config['jdbcSpecs'].get('jdbcPWD', '[redacted]')
+    jdbcDropTableIfExistsCompliant = (config['jdbcSpecs'].get('jdbcDropTableIfExistsCompliant', 'True') == 'True')
+    
+    # tweak the connection parameters
+    # depending upon the target database
+    
+    # is it MySQL
+    if jdbcType == 'mysql':
+        jdbcParms = {
+            'host':jdbcHost,
+            'port': jdbcPort,
+            'database':jdbcDatabase,
+            'user':jdbcUID,
+            'password':jdbcPWD        
+            }
+    # is it SQL Server?
+    elif jdbcType == 'mssql':
+        jdbcParms = {
+            'server':jdbcHost + ":" + str(jdbcPort),
+            'port': jdbcPort,
+            'database':jdbcDatabase,
+            'user':jdbcUID,
+            'password':jdbcPWD        
+            }
+    # otherwise
+    else:
+        # default to PostgreSQL
+        jdbcParms = {
+            'host':jdbcHost,
+            'port': jdbcPort,
+            'dbname':jdbcDatabase,
+            'user':jdbcUID,
+            'password':jdbcPWD        
+    }
+
     executorName = getpass.getuser()
-    runDate = time.strftime('%A %d %b %Y %I:%M %p %Z')
+    runDate = time.strftime(runDateFormatString)
     
     srcPathExpanded = srcFullPath
     if srcFullPath.startswith('~'):
         srcPathExpanded = os.path.expanduser(srcFullPath)
     srcPathExpanded = os.path.abspath(srcPathExpanded)
-    logging.info("SRC file %s" % srcPathExpanded)
+    logging.info("SRC file: %s" % srcPathExpanded)
     if not os.path.exists(srcPathExpanded):
         logging.error("SRC file does NOT exist: %s" % srcPathExpanded)
         successful = False
@@ -271,27 +351,38 @@ def main():
     tgtDqsStatsJdbcExpanded = os.path.join(tgtPathExpanded, os.path.splitext(os.path.basename(srcPathExpanded))[0] + ".sqlite")
     tgtDqsStatsHtmlExpanded = os.path.abspath(tgtDqsStatsHtmlExpanded)
     tgtDqsStatsJdbcExpanded = os.path.abspath(tgtDqsStatsJdbcExpanded)
-    logging.info("TGT DQS Statistics HTML file %s" % tgtDqsStatsHtmlExpanded)
-    logging.info("TGT DQS Statistics JDBC file %s" % tgtDqsStatsJdbcExpanded)
+    logging.info("TGT DQS Statistics HTML file: %s" % tgtDqsStatsHtmlExpanded)
+    logging.info("TGT DQS Statistics JDBC file: %s" % tgtDqsStatsJdbcExpanded)
     if not os.path.exists(os.path.dirname(tgtDqsStatsHtmlExpanded)):
         os.makedirs(os.path.dirname(tgtDqsStatsHtmlExpanded))
     if not os.path.exists(os.path.dirname(tgtDqsStatsJdbcExpanded)):
         os.makedirs(os.path.dirname(tgtDqsStatsJdbcExpanded))
         
-    makoHtmlPathExpanded = makoHtmlFullPath
+    makoHtmlPathExpanded = makoHtmlTemplateName
     if makoHtmlPathExpanded.startswith('~'):
         makoHtmlPathExpanded = os.path.expanduser(makoHtmlPathExpanded)
     makoHtmlPathExpanded = os.path.abspath(makoHtmlPathExpanded)
-    logging.info("DQS Statistics HTML MAKO template file %s" % makoHtmlPathExpanded)
+    logging.info("DQS Statistics HTML MAKO template file: %s" % makoHtmlPathExpanded)
+    if not os.path.exists(makoHtmlPathExpanded):
+        logging.error("MAKO template file for HTML output does NOT exist: %s" % makoHtmlPathExpanded)
+        successful = False
+        return successful, err
         
-    makoJdbcPathExpanded = makoJdbcFullPath
+    makoJdbcPathExpanded = makoJdbcTemplateName
     if makoJdbcPathExpanded.startswith('~'):
         makoJdbcPathExpanded = os.path.expanduser(makoJdbcPathExpanded)
     makoJdbcPathExpanded = os.path.abspath(makoJdbcPathExpanded)
-    logging.info("DQS Statistics JDBC MAKO template file %s" % makoJdbcPathExpanded)
+    logging.info("DQS Statistics JDBC MAKO template file: %s" % makoJdbcPathExpanded)
+    if not os.path.exists(makoJdbcPathExpanded):
+        logging.error("MAKO template file for JDBC output does NOT exist: %s" % makoJdbcPathExpanded)
+        successful = False
+        return successful, err
         
     colNames = []
-    colStats = collections.OrderedDict()
+
+    logging.info('Accept columns: %s' % acceptColNames)
+    logging.info('Unique columns: %s' % uniqueColNames)
+    logging.info('Ignore columns: %s' % ignoreColNames)
     
     # derive the columns for which NO value frequencies are to be calculated    
     bypassColNames = list(set(uniqueColNames)|set(ignoreColNames))
@@ -308,7 +399,7 @@ def main():
     for rowData in csvReader:
         fileRows += 1
         if fileRows == 1:
-            colNames, colStats = analyzeHead(rowData, colNames, colStats)
+            colNames = analyzeHead(rowData, colNames)
         else:
             dataRows += 1
             analyzeData(rowData, colNames, acceptColNames, bypassColNames, fileRows, dataRows)
@@ -390,7 +481,7 @@ def main():
 
     htmlWriter = codecs.open(tgtDqsStatsHtmlExpanded, 'w', 'cp1252')
                     
-    makoHtmlTemplate = Template(filename=makoHtmlFullPath)
+    makoHtmlTemplate = Template(filename=makoHtmlPathExpanded)
     buffer = StringIO()
     attrs = {}
     parms = {
@@ -401,18 +492,13 @@ def main():
         'srcPathExpanded':srcPathExpanded,
         'srcPathBaseName':os.path.basename(srcPathExpanded),
         'srcDelim':srcDelim,
-        'srcIdColName':srcIdColName,
         'srcHeaderRows':srcHeaderRows,
-        'tgtDelim':tgtDelim,
         'maxRows':maxRows,
         'maxHtmlCount':maxHtmlCount,
         'maxJdbcCount':maxJdbcCount,
-        'tgtDqsFileNameExpanded':tgtPathExpanded,
+        'tgtDqsStatsJdbcExpanded':tgtDqsStatsJdbcExpanded,
         'inputRows':dataRows,
         'inputCols':len(colNames),
-        'apcdSrcIdFmt':apcdSrcIdFmt,
-        'apcdSrcIdBgnNbr':apcdSrcIdBgnNbr,
-        'apcdSrcIdEndNbr':(apcdSrcIdBgnNbr + dataRows - 1),
         'colNames':colNames,
         'acceptColNames':acceptColNames,
         'ignoreColNames':ignoreColNames,
@@ -460,7 +546,7 @@ def main():
     sqliteConn = sqlite3.connect(tgtDqsStatsJdbcExpanded)
     sqliteCursor = sqliteConn.cursor()
                     
-    makoJdbcTemplate = Template(filename=makoJdbcFullPath)
+    makoJdbcTemplate = Template(filename=makoJdbcPathExpanded)
     buffer = StringIO()
     attrs = {}
     parms = {
@@ -471,9 +557,7 @@ def main():
         'srcPathExpanded':srcPathExpanded,
         'srcPathBaseName':os.path.basename(srcPathExpanded),
         'srcDelim':srcDelim,
-        'srcIdColName':srcIdColName,
         'srcHeaderRows':srcHeaderRows,
-        'tgtDelim':tgtDelim,
         'maxRows':maxRows,
         'maxHtmlCount':maxHtmlCount,
         'maxJdbcCount':maxJdbcCount,
@@ -481,9 +565,6 @@ def main():
         'tgtDqsStatsJdbcExpanded':tgtDqsStatsJdbcExpanded,
         'inputRows':dataRows,
         'inputCols':len(colNames),
-        'apcdSrcIdFmt':apcdSrcIdFmt,
-        'apcdSrcIdBgnNbr':apcdSrcIdBgnNbr,
-        'apcdSrcIdEndNbr':(apcdSrcIdBgnNbr + dataRows - 1),
         'colNames':colNames,
         'acceptColNames':acceptColNames,
         'ignoreColNames':ignoreColNames,
@@ -496,7 +577,7 @@ def main():
         'frqValueAscs':frqValueAscs,
         'frqWidthAscs':frqWidthAscs,
         'colCountMisMatches':colCountMisMatches,
-        'jdbcDropCompliant': True # True for SQLite databases
+        'jdbcDropTableIfExistsCompliant': True # True for SQLite databases
         }
     context = Context(buffer, **parms)
     makoJdbcTemplate.render_context(context)
@@ -525,14 +606,29 @@ def main():
     # default to PostgreSQL
     jdbcConn = None
     if jdbcType.lower() == 'mysql':
-        jdbcConn = mysql.connector.connect(**jdbcParms)
+        try:
+            jdbcConn = mysql.connector.connect(**jdbcParms)
+        except Exception as e:
+            logging.error('Failed to connect to MySQL database')
+            logging.error(jdbcParms)
+            logging.error(str(e))
     elif jdbcType.lower() == 'mssql':
-        jdbcConn = pymssql.connect(**jdbcParms)
+        try:
+            jdbcConn = pymssql.connect(**jdbcParms)
+        except Exception as e:
+            logging.error('Failed to connect to MySQL database')
+            logging.error(jdbcParms)
+            logging.error(str(e))
     else:
-        jdbcConn = psycopg2.connect(**jdbcParms)
+        try:
+            jdbcConn = psycopg2.connect(**jdbcParms)
+        except Exception as e:
+            logging.error('Failed to connect to MySQL database')
+            logging.error(jdbcParms)
+            logging.error(str(e))
     jdbcCursor = jdbcConn.cursor()
                     
-    makoJdbcTemplate = Template(filename=makoJdbcFullPath)
+    makoJdbcTemplate = Template(filename=makoJdbcPathExpanded)
     buffer = StringIO()
     attrs = {}
     parms = {
@@ -543,9 +639,7 @@ def main():
         'srcPathExpanded':srcPathExpanded,
         'srcPathBaseName':os.path.basename(srcPathExpanded),
         'srcDelim':srcDelim,
-        'srcIdColName':srcIdColName,
         'srcHeaderRows':srcHeaderRows,
-        'tgtDelim':tgtDelim,
         'maxRows':maxRows,
         'maxHtmlCount':maxHtmlCount,
         'maxJdbcCount':maxJdbcCount,
@@ -553,9 +647,6 @@ def main():
         'tgtDqsStatsJdbcExpanded':tgtDqsStatsJdbcExpanded,
         'inputRows':dataRows,
         'inputCols':len(colNames),
-        'apcdSrcIdFmt':apcdSrcIdFmt,
-        'apcdSrcIdBgnNbr':apcdSrcIdBgnNbr,
-        'apcdSrcIdEndNbr':(apcdSrcIdBgnNbr + dataRows - 1),
         'colNames':colNames,
         'acceptColNames':acceptColNames,
         'ignoreColNames':ignoreColNames,
@@ -568,7 +659,7 @@ def main():
         'frqValueAscs':frqValueAscs,
         'frqWidthAscs':frqWidthAscs,
         'colCountMisMatches':colCountMisMatches,
-        'jdbcDropCompliant': jdbcDropCompliant # True for PostgreSQL and MySQL databases, False for Sql Server
+        'jdbcDropTableIfExistsCompliant': jdbcDropTableIfExistsCompliant # True for PostgreSQL and MySQL databases, False for Sql Server
         }
     context = Context(buffer, **parms)
     makoJdbcTemplate.render_context(context)
@@ -601,10 +692,9 @@ def main():
 #    pprint (frqWidths)
 #    pprint (frqValues)
 
-def analyzeHead(rowCells, colNames, colStats):
+def analyzeHead(rowCells, colNames):
     for colName in rowCells:
         colNames.append(colName)
-        colStats[colName] = collections.OrderedDict(initVals)
         colUniqs[colName] = {}
         frqValues[colName] = {}
         frqWidths[colName] = {}
@@ -614,7 +704,7 @@ def analyzeHead(rowCells, colNames, colStats):
         avgWidths[colName] = 0.0
         nonBlanks[colName] = 0
         cvgPrcnts[colName] = 0.0
-    return colNames, colStats
+    return colNames
     
 def analyzeData(rowCells, colNames, acceptColNames, bypassColNames, fileRow, dataRow):
     cells = 0

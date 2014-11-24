@@ -1,4 +1,4 @@
-% if jdbcDropCompliant:
+% if jdbcDropTableIfExistsCompliant:
 DROP TABLE IF EXISTS DqsFileStats;
 % else:
 IF EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'DqsFileStats') DROP TABLE DqsFileStats;
@@ -34,11 +34,6 @@ insert into DqsFileStats (
 		inputCols,
 		srcDelim,
 		srcHeaderRows,
-		tgtDelim,
-		apcdSrcIdFmt,
-		srcIdColName,
-		apcdSrcIdBgnNbr,
-		apcdSrcIdEndNbr,
 		maxRows,
 		maxHtmlCount,
 		maxJdbcCount,
@@ -53,18 +48,13 @@ insert into DqsFileStats (
 		${inputCols},
 		'${str.replace(srcDelim,"'","''")}',
 		${srcHeaderRows},
-		'${str.replace(tgtDelim,"'","''")}',
-		'${str.replace(apcdSrcIdFmt,"'","''")}',
-		'${str.replace(srcIdColName,"'","''")}',
-		${apcdSrcIdBgnNbr},
-		${apcdSrcIdEndNbr},
 		${maxRows},
 		${maxHtmlCount},
 		${maxJdbcCount},
 		'${str.replace(tgtDqsStatsHtmlExpanded,"'","''")}',
 		'${str.replace(tgtDqsStatsJdbcExpanded,"'","''")}');
 
-% if jdbcDropCompliant:
+% if jdbcDropTableIfExistsCompliant:
 <%! import string %>
 DROP TABLE IF EXISTS ColCountMisMatches;
 % else:
@@ -97,7 +87,7 @@ insert into ColCountMisMatches (
 	${colCountMisMatch['nbrCols']});
 % endfor
 
-% if jdbcDropCompliant:
+% if jdbcDropTableIfExistsCompliant:
 <%! import string %>
 DROP TABLE IF EXISTS DqsMinMaxAvgCvgStats;
 % else:
@@ -144,7 +134,7 @@ insert into DqsMinMaxAvgCvgStats (
 % endif
 % endfor
 
-% if jdbcDropCompliant:
+% if jdbcDropTableIfExistsCompliant:
 DROP TABLE IF EXISTS DqsValueFreqs;
 % else:
 IF EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'DqsValueFreqs') DROP TABLE DqsValueFreqs;
@@ -216,7 +206,7 @@ insert into DqsValueFreqs (
 % endif
 % endfor
 
-% if jdbcDropCompliant:
+% if jdbcDropTableIfExistsCompliant:
 DROP TABLE IF EXISTS DqsWidthFreqs;
 % else:
 IF EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'DqsWidthFreqs') DROP TABLE DqsWidthFreqs;

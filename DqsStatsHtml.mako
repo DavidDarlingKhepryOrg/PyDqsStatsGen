@@ -144,26 +144,6 @@
 				<td class="exeBlockCnt">${srcHeaderRows}</td>
 			</tr>
 			<tr>
-				<th>Target File Delimiter</th>
-				<td class="exeBlockCnt">${html.escape(tgtDelim)}</td>
-			</tr>
-			<tr>
-				<th>APCD_SOURCE_ID Format</th>
-				<td class="exeBlockCnt">${html.escape(apcdSrcIdFmt)}</td>
-			</tr>
-			<tr>
-				<th>Source ID Column Name</th>
-				<td class="exeBlockCnt">${html.escape(srcIdColName)}</td>
-			</tr>
-			<tr>
-				<th>APCD_SOURCE_ID Beginning Number</th>
-				<td class="exeBlockCnt">${apcdSrcIdBgnNbr}</td>
-			</tr>
-			<tr>
-				<th>APCD_SOURCE_ID Ending Number</th>
-				<td class="exeBlockCnt">${apcdSrcIdEndNbr}</td>
-			</tr>
-			<tr>
 				<th>Max Records</th>
 				<td class="exeBlockCnt">${maxRows}</td>
 			</tr>
@@ -180,8 +160,8 @@
 				<td class="exeBlockCnt">${maxHtmlCount}</td>
 			</tr>
 			<tr>
-				<th>DQS Report File</th>
-				<td class="exeBlockCnt">${html.escape(tgtDqsFileNameExpanded)}</td>
+				<th>DQS SQlite File</th>
+				<td class="exeBlockCnt">${html.escape(tgtDqsStatsJdbcExpanded)}</td>
 			</tr>
 		</table>
 
