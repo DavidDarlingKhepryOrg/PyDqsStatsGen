@@ -1,13 +1,10 @@
 # -*- coding: utf-8 -*-
 
-# TODO: output statistics to Sql Server database
-
 import codecs
 import collections
 import csv
 import getpass
 import heapq
-import html
 import logging
 import mysql.connector
 import os
@@ -24,7 +21,7 @@ from io import StringIO
 
 from pprint import pprint
 
-maxRows = 10000
+maxRows = 1000000
 flushCount = 10000
 
 maxHtmlCount = 5
@@ -87,7 +84,7 @@ jdbcParms = {
     'password':jdbcPWD        
     }
 
-# MsSQL parameters
+# SQL Server parameters
 jdbcType = 'mssql'
 jdbcHost = 'Khepry-ASUS-LT1'
 jdbcPort = 1433
@@ -281,6 +278,10 @@ def main():
     colNames = []
     colStats = collections.OrderedDict()
     
+    # derive the columns for which NO value frequencies are to be calculated    
+    bypassColNames = list(set(uniqueColNames)|set(ignoreColNames))
+    logging.info("Bypass value frequency processing for columns: %s" % bypassColNames)
+       
     # open the source file for reading
     srcFile = codecs.open(srcPathExpanded, 'r', 'cp1252')
     csvReader = csv.reader(srcFile, delimiter=srcDelim, quoting=srcQuote)
@@ -295,7 +296,7 @@ def main():
             colNames, colStats = analyzeHead(rowData, colNames, colStats)
         else:
             dataRows += 1
-            analyzeData(rowData, colNames,uniqueColNames, ignoreColNames, rows)
+            analyzeData(rowData, colNames, bypassColNames, rows)
         if maxRows > 0 and rows > maxRows:
             break
         if dataRows > 0 and dataRows % flushCount == 0:
@@ -331,9 +332,9 @@ def main():
     frqValueAscs = collections.OrderedDict()
     for colName in colNames:
         frqValueAscs[colName] = {}
-        # bypass columns with unique values since
-        # no value frequencies were tracked for them
-        if (not colName in uniqueColNames) and (not colName in ignoreColNames):
+        # bypass columns with unprocessed columns
+        # since no value frequencies were tracked for them
+        if not colName in bypassColNames:
             frqValueAscs[colName] = sorted(frqValues[colName].items(), key=lambda x:x[0])
             
     frqWidthAscs = collections.OrderedDict()
@@ -350,7 +351,7 @@ def main():
         valueFreqs[colName]['frqValValAsc'] = {}
         valueFreqs[colName]['frqValFrqAsc'] = {}
         valueFreqs[colName]['frqValFrqDsc'] = {}
-        if not colName in uniqueColNames and not colName in ignoreColNames:
+        if not colName in bypassColNames:
             if maxHtmlCount > 0:
                 valueFreqs[colName]['frqValValAsc'] = heapq.nsmallest(maxHtmlCount, frqValues[colName].items(), key=lambda x:x[0])
                 valueFreqs[colName]['frqValFrqAsc'] = heapq.nsmallest(maxHtmlCount, frqValues[colName].items(), key=lambda x:x[1])
@@ -411,7 +412,9 @@ def main():
         valueFreqs[colName]['frqValValAsc'] = {}
         valueFreqs[colName]['frqValFrqAsc'] = {}
         valueFreqs[colName]['frqValFrqDsc'] = {}
-        if not colName in uniqueColNames and not colName in ignoreColNames:
+        # don't sort unprocessed columns as no
+        # value frequencies were calculated for them
+        if not colName in bypassColNames:
             if maxJdbcCount > 0:
                 valueFreqs[colName]['frqValValAsc'] = heapq.nsmallest(maxJdbcCount, frqValues[colName].items(), key=lambda x:x[0])
                 valueFreqs[colName]['frqValFrqAsc'] = heapq.nsmallest(maxJdbcCount, frqValues[colName].items(), key=lambda x:x[1])
@@ -577,7 +580,7 @@ def analyzeHead(rowCells, colNames, colStats):
         cvgPrcnts[colName] = 0.0
     return colNames, colStats
     
-def analyzeData(rowCells, colNames, uniqueColNames, ignoreColNames, row):
+def analyzeData(rowCells, colNames, bypassColNames, row):
     cells = 0
     # only evaluate rows with
     # expected number of columns
@@ -597,7 +600,7 @@ def analyzeData(rowCells, colNames, uniqueColNames, ignoreColNames, row):
                 maxWidths[colName] = width
             if width < minWidths[colName]:
                 minWidths[colName] = width
-            if not colName in uniqueColNames and not colName in ignoreColNames:
+            if not colName in bypassColNames:
                 try:
                     frqValues[colName][value] += 1
                 except:
