@@ -187,7 +187,7 @@
 		<p />
 		<table>
 			<tr>
-				<th colspan="3">Source File Column Coverage</th>
+				<th colspan="6">Source File Column Coverage</th>
 			</tr>
 			<tr>
 				<th>Column Name</th>
@@ -199,6 +199,8 @@
 			</tr>
 			
 			% for colName in colNames:
+
+			% if len(acceptColNames) == 0 or colName in acceptColNames:
 			
 			<tr class="onlyBlockVal">
 				<th>${html.escape(colName)}</th>
@@ -206,8 +208,14 @@
 				<td class="numeric">${maxWidths[colName]}</td>
 				<td class="numeric">${'{0:.1f}'.format(avgWidths[colName])}</td>
 				<td class="numeric">${nonBlanks[colName]}</td>
+				% if inputRows > 0:
 				<td class="numeric">${'{0:.2%}'.format(nonBlanks[colName]/inputRows)}</td>
+				% else:
+				<td class="numeric">${'{0:.2%}'.format(0)}</td>
+				% endif
 			</tr>
+
+			% endif
 			
 			% endfor
 			
@@ -227,6 +235,7 @@
 		</table>
 		
 		% for colName in colNames:
+		% if len(acceptColNames) == 0 or colName in acceptColNames:
 		<p />
 		<table>
 			<tr class="colStatsHdrLvl1">
@@ -268,40 +277,43 @@
 	      		<tr>
     				<th class="leftBlockValLft">${html.escape(valueFreqs[colName]['frqValValAsc'][i][0])}</th>
     				<td class="leftBlockValRgt">${valueFreqs[colName]['frqValValAsc'][i][1]}</td>
-                          % if nonBlanks[colName] > 0:
-            				<td class="leftBlockValRgt">${'{0:.2%}'.format(valueFreqs[colName]['frqValValAsc'][i][1]/inputRows)}</td>
-                          % else:
-            				<td class="leftBlockValRgt">0.00%</td>
-                          % endif
+                    % if inputRows > 0:
+       				<td class="leftBlockValRgt">${'{0:.2%}'.format(valueFreqs[colName]['frqValValAsc'][i][1]/inputRows)}</td>
+                    % else:
+       				<td class="leftBlockValRgt">0.00%</td>
+                    % endif
     				<th class="leftBlockValLft">${html.escape(valueFreqs[colName]['frqValFrqDsc'][i][0])}</th>
     				<td class="leftBlockValRgt">${valueFreqs[colName]['frqValFrqDsc'][i][1]}</td>
-                          % if nonBlanks[colName] > 0:
-           				<td class="leftBlockValRgt">${'{0:.2%}'.format(valueFreqs[colName]['frqValFrqDsc'][i][1]/inputRows)}</td>
-                          % else:
-            				<td class="leftBlockValRgt">0.00%</td>
-                          % endif
+                    % if inputRows > 0:
+           			<td class="leftBlockValRgt">${'{0:.2%}'.format(valueFreqs[colName]['frqValFrqDsc'][i][1]/inputRows)}</td>
+                    % else:
+            		<td class="leftBlockValRgt">0.00%</td>
+                    % endif
        				<th class="leftBlockValLft">${html.escape(valueFreqs[colName]['frqValFrqAsc'][i][0])}</th>
     				<td class="leftBlockValRgt">${valueFreqs[colName]['frqValFrqAsc'][i][1]}</td>
-                          % if nonBlanks[colName] > 0:
-          				<td class="leftBlockValRgt">${'{0:.2%}'.format(valueFreqs[colName]['frqValFrqAsc'][i][1]/inputRows)}</td>
-                          % else:
-           				<td class="leftBlockValRgt">0.00%</td>
-                          % endif
+                    % if inputRows > 0:
+      				<td class="leftBlockValRgt">${'{0:.2%}'.format(valueFreqs[colName]['frqValFrqAsc'][i][1]/inputRows)}</td>
+                    % else:
+       				<td class="leftBlockValRgt">0.00%</td>
+                    % endif
 	    		</tr>
 	      		% endfor
 			
 			% endif
 		</table>
+		% endif
 		% endfor
 
 		<hr />
 		<hr />
 		
 		% for colName in colNames:
+		% if len(acceptColNames) == 0 or colName in acceptColNames:
+		
 		<p />
 		<table>
 			<tr>
-				<th colspan="9">${html.escape(colName)} Width by Freq</th>
+				<th colspan="3">${html.escape(colName)} Width by Freq</th>
 			</tr>
 			<tr>
 				<th>Width</th>
@@ -313,14 +325,15 @@
 			<tr class="onlyBlockLen">
 				<th>${frqWidth[0]}</th>
 				<td class="numeric">${frqWidth[1]}</td>
-                        % if nonBlanks[colName] > 0:
+                % if inputRows > 0:
 				<td class="numeric">${'{0:.2%}'.format(frqWidth[1]/inputRows)}</td>
-                        % else:
+                % else:
 				<td class="numeric">0.00%</td>
-                        % endif
+                % endif
 			</tr>
 			% endfor
 		</table>
+		% endif
 		% endfor
 				
 			

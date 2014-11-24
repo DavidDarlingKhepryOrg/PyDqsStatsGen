@@ -21,11 +21,16 @@ from io import StringIO
 
 from pprint import pprint
 
-maxRows = 1000000
+maxRows = 10000
 flushCount = 10000
 
+# maximum allowed column
+# count mismatches before
+# terminating the program
+maxColCountMisMatches = 0
+
 maxHtmlCount = 5
-maxJdbcCount = 1
+maxJdbcCount = 10
 
 iniFullPath = ''
 
@@ -38,10 +43,20 @@ srcDelim = ','
 srcQuote = csv.QUOTE_MINIMAL
 srcHeaderRows = 1
 
-uniqueColNames = ['voter_reg_num','ncid']
-uniqueColNames = ['NPI']
+# empty accept list will signal
+# the processing of ALL columns
+acceptColNames = ['NPI','Entity Type Code','Replacement NPI','Employer Identification Number (EIN)']
+# acceptColNames = []
+
+# ignore list will suppress calculations of the
+# value frequency statistics for the specified columns
 ignoreColNames = ['voter_reg_num','ncid']
 ignoreColNames = ['Entity Type Code']
+
+# unique list will suppress calculations of the
+# value frequency statistics for the specified columns
+uniqueColNames = ['voter_reg_num','ncid']
+uniqueColNames = ['NPI']
 
 makoHtmlFullPath = 'DqsStatsHtml.mako'
 makoJdbcFullPath = 'DqsStatsJdbc.mako'
@@ -296,7 +311,7 @@ def main():
             colNames, colStats = analyzeHead(rowData, colNames, colStats)
         else:
             dataRows += 1
-            analyzeData(rowData, colNames, bypassColNames, rows)
+            analyzeData(rowData, colNames, acceptColNames, bypassColNames, rows)
         if maxRows > 0 and rows > maxRows:
             break
         if dataRows > 0 and dataRows % flushCount == 0:
@@ -306,7 +321,12 @@ def main():
                 rcdsPerSec = dataRows / seconds
             else:
                 rcdsPerSec = 0
-            print ("Read {:,} data rows in {:,.0f} seconds @ {:,.0f} records/second".format(dataRows, seconds, rcdsPerSec))
+            logging.info("Read {:,} data rows in {:,.0f} seconds @ {:,.0f} records/second".format(dataRows, seconds, rcdsPerSec))
+        # if maximum column count mismatches value exceeded
+        if maxColCountMisMatches > 0 and len(colCountMisMatches) >= maxColCountMisMatches:
+            # cease further processing
+            logging.error("Processing terminated due to the number of column count mismatches.")
+            break
             
     del csvReader
     srcFile.close()
@@ -318,17 +338,23 @@ def main():
     else:
         rcdsPerSec = 0
         
-    print ('')
-    print ("Read {:,} data rows in {:,.0f} seconds @ {:,.0f} records/second".format(dataRows, seconds, rcdsPerSec))
+    logging.info('')
+    logging.info("Read {:,} data rows in {:,.0f} seconds @ {:,.0f} records/second".format(dataRows, seconds, rcdsPerSec))
     
+    # column-by-column
     for colName in colNames:
+        # if there were
+        # row of data found
         if dataRows > 0:
+            # calculate the average width
             avgWidths[colName] = (totWidths[colName] * 1.0) / (dataRows * 1.0)
+            # calculate the coverage percent
             cvgPrcnts[colName] = (nonBlanks[colName] * 1.0) / (dataRows * 1.0)
         else:
             avgWidths[colName] = 0.0
             cvgPrcnts[colName] = 0.0
-            
+
+    # column-by-column sort the value frequencies            
     frqValueAscs = collections.OrderedDict()
     for colName in colNames:
         frqValueAscs[colName] = {}
@@ -336,7 +362,8 @@ def main():
         # since no value frequencies were tracked for them
         if not colName in bypassColNames:
             frqValueAscs[colName] = sorted(frqValues[colName].items(), key=lambda x:x[0])
-            
+
+    # column-by-column, sort the width frequencies            
     frqWidthAscs = collections.OrderedDict()
     for colName in colNames:
         frqWidthAscs[colName] = sorted(frqWidths[colName].items(), key=lambda x:x[0])
@@ -386,8 +413,9 @@ def main():
         'apcdSrcIdBgnNbr':apcdSrcIdBgnNbr,
         'apcdSrcIdEndNbr':(apcdSrcIdBgnNbr + dataRows - 1),
         'colNames':colNames,
-        'uniqueColNames':uniqueColNames,
+        'acceptColNames':acceptColNames,
         'ignoreColNames':ignoreColNames,
+        'uniqueColNames':uniqueColNames,
         'nonBlanks':nonBlanks,
         'valueFreqs':valueFreqs,
         'minWidths':minWidths,
@@ -454,8 +482,9 @@ def main():
         'apcdSrcIdBgnNbr':apcdSrcIdBgnNbr,
         'apcdSrcIdEndNbr':(apcdSrcIdBgnNbr + dataRows - 1),
         'colNames':colNames,
-        'uniqueColNames':uniqueColNames,
+        'acceptColNames':acceptColNames,
         'ignoreColNames':ignoreColNames,
+        'uniqueColNames':uniqueColNames,
         'nonBlanks':nonBlanks,
         'valueFreqs':valueFreqs,
         'minWidths':minWidths,
@@ -478,8 +507,8 @@ def main():
             try:
                 sqliteCursor.execute(sqlCmd)
             except Exception as e:
-                print (sqlCmd)
-                print (str(e))
+                logging.error(sqlCmd)
+                logging.error(str(e))
                 break;
             sqlCmd = ''
     
@@ -523,8 +552,9 @@ def main():
         'apcdSrcIdBgnNbr':apcdSrcIdBgnNbr,
         'apcdSrcIdEndNbr':(apcdSrcIdBgnNbr + dataRows - 1),
         'colNames':colNames,
-        'uniqueColNames':uniqueColNames,
+        'acceptColNames':acceptColNames,
         'ignoreColNames':ignoreColNames,
+        'uniqueColNames':uniqueColNames,
         'nonBlanks':nonBlanks,
         'valueFreqs':valueFreqs,
         'minWidths':minWidths,
@@ -532,7 +562,7 @@ def main():
         'avgWidths':avgWidths,
         'frqValueAscs':frqValueAscs,
         'frqWidthAscs':frqWidthAscs,
-        'jdbcDropCompliant': jdbcDropCompliant # True for PostgreSQL and MySQL databases, False for MsSQL
+        'jdbcDropCompliant': jdbcDropCompliant # True for PostgreSQL and MySQL databases, False for Sql Server
         }
     context = Context(buffer, **parms)
     makoJdbcTemplate.render_context(context)
@@ -547,8 +577,8 @@ def main():
             try:
                 jdbcCursor.execute(sqlCmd)
             except Exception as e:
-                print (sqlCmd)
-                print (str(e))
+                logging.error(sqlCmd)
+                logging.error(str(e))
                 break;
             sqlCmd = ''
 
@@ -580,33 +610,36 @@ def analyzeHead(rowCells, colNames, colStats):
         cvgPrcnts[colName] = 0.0
     return colNames, colStats
     
-def analyzeData(rowCells, colNames, bypassColNames, row):
+def analyzeData(rowCells, colNames, acceptColNames, bypassColNames, row):
     cells = 0
     # only evaluate rows with
     # expected number of columns
     if len(rowCells) == len(colNames): 
         for cellValue in rowCells:
             colName = colNames[cells]
-            value = cellValue.strip()
-            width = len(value)
-            totWidths[colName] += width
-            try:
-                frqWidths[colName][width] += 1
-            except:
-                frqWidths[colName][width] = 1
-            if width > 0:
-                nonBlanks[colName] += 1
-            if width > maxWidths[colName]:
-                maxWidths[colName] = width
-            if width < minWidths[colName]:
-                minWidths[colName] = width
-            if not colName in bypassColNames:
+            # either process ALL or just the specified columns
+            if len(acceptColNames) == 0 or colName in acceptColNames:
+                value = cellValue.strip()
+                width = len(value)
+                totWidths[colName] += width
                 try:
-                    frqValues[colName][value] += 1
+                    frqWidths[colName][width] += 1
                 except:
-                    frqValues[colName][value] = 1
-            else:
-                frqValues[colName] = {}
+                    frqWidths[colName][width] = 1
+                if width > 0:
+                    nonBlanks[colName] += 1
+                if width > maxWidths[colName]:
+                    maxWidths[colName] = width
+                if width < minWidths[colName]:
+                    minWidths[colName] = width
+                if not colName in bypassColNames:
+                    try:
+                        frqValues[colName][value] += 1
+                    except:
+                        frqValues[colName][value] = 1
+                else:
+                    frqValues[colName] = {}
+            # increment column index
             cells += 1
     else:
         colCountMisMatches[row] = len(rowCells)

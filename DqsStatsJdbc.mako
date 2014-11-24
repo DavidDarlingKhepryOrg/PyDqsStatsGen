@@ -80,6 +80,7 @@ CREATE TABLE DqsMinMaxAvgCvgStats (
 	cvgPercnt FLOAT
 );
 % for colName in colNames:
+% if len(acceptColNames) == 0 or colName in acceptColNames:
 insert into DqsMinMaxAvgCvgStats (
 	dataProvider,
 	runDate,runBy,
@@ -104,6 +105,7 @@ insert into DqsMinMaxAvgCvgStats (
 	% else:
 	0.00);
 	% endif
+% endif
 % endfor
 
 % if jdbcDropCompliant:
@@ -128,6 +130,7 @@ CREATE TABLE DqsValueFreqs (
     valMinPctOfTotal FLOAT  
 );
 % for colName in colNames:
+% if len(acceptColNames) == 0 or colName in acceptColNames:
 <%
  attrs['maxVals'] = len(valueFreqs[colName]['frqValValAsc'])
 %>
@@ -154,26 +157,27 @@ insert into DqsValueFreqs (
 	'${str.replace(colName,"'","''")}',
 	'${str.replace(valueFreqs[colName]['frqValValAsc'][i][0],"'","''")}',
 	${valueFreqs[colName]['frqValValAsc'][i][1]},
-	% if nonBlanks[colName] > 0:
+	% if inputRows > 0:
 	${valueFreqs[colName]['frqValValAsc'][i][1]*100.0/inputRows*1.0},
 	% else:
 	0.00,
 	% endif
 	'${str.replace(valueFreqs[colName]['frqValFrqDsc'][i][0],"'","''")}',
 	${valueFreqs[colName]['frqValFrqDsc'][i][1]},
-	% if nonBlanks[colName] > 0:
+	% if inputRows > 0:
 	${valueFreqs[colName]['frqValFrqDsc'][i][1]*100.0/inputRows*1.0},
 	% else:
 	0.00,
 	% endif
 	'${str.replace(valueFreqs[colName]['frqValFrqAsc'][i][0],"'","''")}',
 	${valueFreqs[colName]['frqValFrqAsc'][i][1]},
-	% if nonBlanks[colName] > 0:
+	% if inputRows > 0:
 	${valueFreqs[colName]['frqValFrqAsc'][i][1]*100.0/inputRows*1.0});
 	% else:
 	0.00);
 	% endif
 % endfor
+% endif
 % endfor
 
 % if jdbcDropCompliant:
@@ -192,6 +196,7 @@ CREATE TABLE DqsWidthFreqs (
     widthPctOfTotal FLOAT  
 );
 % for colName in colNames:
+% if len(acceptColNames) == 0 or colName in acceptColNames:
 % for frqWidth in frqWidthAscs[colName]:
 insert into DqsWidthFreqs (
 	dataProvider,
@@ -209,10 +214,11 @@ insert into DqsWidthFreqs (
 	'${str.replace(colName,"'","''")}',
 	${frqWidth[0]},
 	${frqWidth[1]},
-	% if nonBlanks[colName] > 0:
+	% if inputRows > 0:
 	${frqWidth[1]*100.0/inputRows*1.0});
     % else:
 	0.00);
     % endif
 % endfor
+% endif
 % endfor
