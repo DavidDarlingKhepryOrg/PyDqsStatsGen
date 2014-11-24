@@ -120,8 +120,12 @@
 				<th colspan="2">Execution Parameters</th>
 			</tr>
 			<tr>
-				<th>Source File</th>
+				<th>Source File Full Path</th>
 				<td class="exeBlockCnt">${html.escape(srcPathExpanded)}</td>
+			</tr>
+			<tr>
+				<th>Source File Base Name</th>
+				<td class="exeBlockCnt">${html.escape(srcPathBaseName)}</td>
 			</tr>
 			<tr>
 				<th>Input Records</th>
@@ -179,6 +183,36 @@
 				<th>DQS Report File</th>
 				<td class="exeBlockCnt">${html.escape(tgtDqsFileNameExpanded)}</td>
 			</tr>
+		</table>
+
+		<hr />
+		<hr />
+
+		<p />
+		<table>
+			<tr>
+				<th colspan="3">Column Count Mismatches</th>
+			</tr>
+			<tr>
+				<th>File Row#</th>
+				<th>Data Row#</th>
+				<th>Nbr of Columns</th>
+			</tr>
+
+			% if len(colCountMisMatches) > 0:			
+			% for colCountMisMatch in colCountMisMatches:
+			<tr class="onlyBlockVal">
+				<td class="numeric">${colCountMisMatch['fileRow']}</th>
+				<td class="numeric">${colCountMisMatch['dataRow']}</td>
+				<td class="numeric">${colCountMisMatch['nbrCols']}</td>
+			</tr>
+			% endfor
+			% else:
+			<tr class="onlyBlockVal">
+				<td colspan="3">No column mismatches were found</th>
+			</tr>
+			% endif
+			
 		</table>
 
 		<hr />

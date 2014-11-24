@@ -43,17 +43,17 @@ srcDelim = ','
 srcQuote = csv.QUOTE_MINIMAL
 srcHeaderRows = 1
 
-# empty accept list will signal
-# the processing of ALL columns
+# an empty ACCEPT list will signal the
+# processing of ALL of the row's columns
 acceptColNames = ['NPI','Entity Type Code','Replacement NPI','Employer Identification Number (EIN)']
 # acceptColNames = []
 
-# ignore list will suppress calculations of the
+# IGNORE list will suppress calculations of the
 # value frequency statistics for the specified columns
 ignoreColNames = ['voter_reg_num','ncid']
 ignoreColNames = ['Entity Type Code']
 
-# unique list will suppress calculations of the
+# UNIQUE list will suppress calculations of the
 # value frequency statistics for the specified columns
 uniqueColNames = ['voter_reg_num','ncid']
 uniqueColNames = ['NPI']
@@ -138,7 +138,7 @@ cvgPrcnts = {}
 frqHtmlValues = {}
 frqJdbcValues = {}
 
-colCountMisMatches = collections.OrderedDict()
+colCountMisMatches = []
 
 # =============================================================================    
 # Inline class definitions
@@ -303,16 +303,16 @@ def main():
 
     bgnTime = time.time()
     
-    rows = 0
+    fileRows = 0
     dataRows = 0
     for rowData in csvReader:
-        rows += 1
-        if rows == 1:
+        fileRows += 1
+        if fileRows == 1:
             colNames, colStats = analyzeHead(rowData, colNames, colStats)
         else:
             dataRows += 1
-            analyzeData(rowData, colNames, acceptColNames, bypassColNames, rows)
-        if maxRows > 0 and rows > maxRows:
+            analyzeData(rowData, colNames, acceptColNames, bypassColNames, fileRows, dataRows)
+        if maxRows > 0 and dataRows >= maxRows:
             break
         if dataRows > 0 and dataRows % flushCount == 0:
             endTime = time.time()
@@ -399,6 +399,7 @@ def main():
         'executorName': executorName,
         'runDate': runDate,
         'srcPathExpanded':srcPathExpanded,
+        'srcPathBaseName':os.path.basename(srcPathExpanded),
         'srcDelim':srcDelim,
         'srcIdColName':srcIdColName,
         'srcHeaderRows':srcHeaderRows,
@@ -422,7 +423,8 @@ def main():
         'maxWidths':maxWidths,
         'avgWidths':avgWidths,
         'frqValueAscs':frqValueAscs,
-        'frqWidthAscs':frqWidthAscs
+        'frqWidthAscs':frqWidthAscs,
+        'colCountMisMatches':colCountMisMatches
         }
     context = Context(buffer, **parms)
     makoHtmlTemplate.render_context(context)
@@ -467,6 +469,7 @@ def main():
         'executorName': executorName,
         'runDate': runDate,
         'srcPathExpanded':srcPathExpanded,
+        'srcPathBaseName':os.path.basename(srcPathExpanded),
         'srcDelim':srcDelim,
         'srcIdColName':srcIdColName,
         'srcHeaderRows':srcHeaderRows,
@@ -492,6 +495,7 @@ def main():
         'avgWidths':avgWidths,
         'frqValueAscs':frqValueAscs,
         'frqWidthAscs':frqWidthAscs,
+        'colCountMisMatches':colCountMisMatches,
         'jdbcDropCompliant': True # True for SQLite databases
         }
     context = Context(buffer, **parms)
@@ -537,6 +541,7 @@ def main():
         'executorName': executorName,
         'runDate': runDate,
         'srcPathExpanded':srcPathExpanded,
+        'srcPathBaseName':os.path.basename(srcPathExpanded),
         'srcDelim':srcDelim,
         'srcIdColName':srcIdColName,
         'srcHeaderRows':srcHeaderRows,
@@ -562,6 +567,7 @@ def main():
         'avgWidths':avgWidths,
         'frqValueAscs':frqValueAscs,
         'frqWidthAscs':frqWidthAscs,
+        'colCountMisMatches':colCountMisMatches,
         'jdbcDropCompliant': jdbcDropCompliant # True for PostgreSQL and MySQL databases, False for Sql Server
         }
     context = Context(buffer, **parms)
@@ -610,7 +616,7 @@ def analyzeHead(rowCells, colNames, colStats):
         cvgPrcnts[colName] = 0.0
     return colNames, colStats
     
-def analyzeData(rowCells, colNames, acceptColNames, bypassColNames, row):
+def analyzeData(rowCells, colNames, acceptColNames, bypassColNames, fileRow, dataRow):
     cells = 0
     # only evaluate rows with
     # expected number of columns
@@ -642,7 +648,7 @@ def analyzeData(rowCells, colNames, acceptColNames, bypassColNames, row):
             # increment column index
             cells += 1
     else:
-        colCountMisMatches[row] = len(rowCells)
+        colCountMisMatches.append({'fileRow':fileRow, 'dataRow': dataRow, 'nbrCols':len(rowCells)})
     return
     
 # ============================================================================
