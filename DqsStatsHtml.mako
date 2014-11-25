@@ -189,7 +189,7 @@
 			% endfor
 			% else:
 			<tr class="onlyBlockVal">
-				<td colspan="3">No column mismatches were found</th>
+				<td colspan="3">No column count mismatches were found</th>
 			</tr>
 			% endif
 			
@@ -274,11 +274,11 @@
 
 			% if colName in uniqueColNames:
 			<tr class="leftBlockValLft">
-				<td colspan="9">No results were calculated, as column was specified as having all unique values</td>
+				<td colspan="9">No results were calculated, per INI file setting 'uniqueColNames'</td>
 			</tr>
 			% elif colName in ignoreColNames:
 			<tr class="leftBlockValLft">
-				<td colspan="9">No results were calculated, as column was specified to be ignored via program settings</td>
+				<td colspan="9">No results were calculated, per INI file setting 'ignoreColNames'</td>
 			</tr>
 			% else:
 

@@ -278,17 +278,40 @@ def main():
     # which statistics are to be calculated,
     # an empty ACCEPT list will signal the
     # processing of ALL of the row's columns
-    acceptColNames = config['srcSpecs'].get('acceptColNames','').split(',')
+    acceptColNames = {}
+    acceptColNamesStr = config['srcSpecs'].get('acceptColNames', '')
+    if acceptColNamesStr != '':
+        tempValues = acceptColNamesStr.split(',')
+        for tempValue in tempValues:
+            acceptColNames[tempValue] = tempValue
     
     # comma-delimited IGNORE list will suppress calculations
     # of the value frequency statistics for the specified columns
     # ignoreColNames = 'voter_reg_num','ncid'
-    ignoreColNames = config['srcSpecs'].get('ignoreColNames','').split(',')
+    ignoreColNames = {}
+    ignoreColNamesStr = config['srcSpecs'].get('ignoreColNames','')
+    if ignoreColNamesStr != '':
+        tempValues = ignoreColNamesStr.split(',')
+        for tempValue in tempValues:
+            ignoreColNames[tempValue] = tempValue
     
     # comma-delimited UNIQUE list will suppress calculations
     # of the value frequency statistics for the specified columns
     # uniqueColNames = 'voter_reg_num','ncid'
-    uniqueColNames = config['srcSpecs'].get('uniqueColNames','').split(',')
+    uniqueColNames = {}
+    uniqueColNamesStr = config['srcSpecs'].get('uniqueColNames','')
+    if uniqueColNamesStr != '':
+        tempValues = uniqueColNamesStr.split(',')
+        for tempValue in tempValues:
+            uniqueColNames[tempValue] = tempValue
+            
+    bypassColNames = {}
+    for colName in uniqueColNames.keys():
+        if colName not in bypassColNames: 
+            bypassColNames[colName] = colName
+    for colName in ignoreColNames.keys():
+        if colName not in bypassColNames: 
+            bypassColNames[colName] = colName
 
     # obtain the JDBC database connection parameters    
     jdbcType = config['jdbcSpecs'].get('jdbcType', 'pgsql').lower()
@@ -385,7 +408,7 @@ def main():
     logging.info('Ignore columns: %s' % ignoreColNames)
     
     # derive the columns for which NO value frequencies are to be calculated    
-    bypassColNames = list(set(uniqueColNames)|set(ignoreColNames))
+    # bypassColNames = list(set(uniqueColNames)|set(ignoreColNames))
     logging.info("Bypass value frequency processing for columns: %s" % bypassColNames)
        
     # open the source file for reading
