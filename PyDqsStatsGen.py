@@ -403,13 +403,13 @@ def main():
         
     colNames = []
 
-    logging.info('Accept columns: %s' % acceptColNames)
-    logging.info('Unique columns: %s' % uniqueColNames)
-    logging.info('Ignore columns: %s' % ignoreColNames)
+    logging.info('Accept columns: %s' % list(set(acceptColNames.keys())))
+    logging.info('Unique columns: %s' % list(set(uniqueColNames.keys())))
+    logging.info('Ignore columns: %s' % list(set(ignoreColNames.keys())))
     
     # derive the columns for which NO value frequencies are to be calculated    
     # bypassColNames = list(set(uniqueColNames)|set(ignoreColNames))
-    logging.info("Bypass value frequency processing for columns: %s" % bypassColNames)
+    logging.info("Bypass value frequency processing for columns: %s" % list(set(bypassColNames)))
        
     # open the source file for reading
     srcFile = codecs.open(srcPathExpanded, 'r', 'cp1252')
