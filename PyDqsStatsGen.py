@@ -177,6 +177,7 @@ def main():
                 os.makedirs(os.path.dirname(logFullPathExpanded))
             except Exception as e:
                 logging.error(str(e))
+                return successful, err
     
     # if the specified log file exists            
     if os.path.exists(logFullPathExpanded):
@@ -380,6 +381,26 @@ def main():
         os.makedirs(os.path.dirname(tgtDqsStatsHtmlExpanded))
     if not os.path.exists(os.path.dirname(tgtDqsStatsJdbcExpanded)):
         os.makedirs(os.path.dirname(tgtDqsStatsJdbcExpanded))
+
+    # remove any pre-existing statistics files
+    if os.path.exists(tgtDqsStatsHtmlExpanded):
+        try:
+            os.remove(tgtDqsStatsHtmlExpanded)
+        except Exception as e:
+            logging.error('Failed to remove pre-existing statistics file "%s"' % tgtDqsStatsHtmlExpanded)
+            logging.error('Processing terminated immediately.')
+            err = str(e)
+            return successful,err
+            
+    # remove any pre-existing statistics files
+    if os.path.exists(tgtDqsStatsJdbcExpanded):
+        try:
+            os.remove(tgtDqsStatsJdbcExpanded)
+        except Exception as e:
+            logging.error('Failed to remove pre-existing statistics file "%s"' % tgtDqsStatsJdbcExpanded)
+            logging.error('Processing terminated immediately.')
+            err = str(e)
+            return successful,err
         
     makoHtmlPathExpanded = makoHtmlTemplateName
     if makoHtmlPathExpanded.startswith('~'):
@@ -422,7 +443,11 @@ def main():
     for rowData in csvReader:
         fileRows += 1
         if fileRows == 1:
-            colNames = analyzeHead(rowData, colNames)
+            colNames, err = analyzeHead(rowData, colNames, acceptColNames, ignoreColNames, uniqueColNames)
+            if err:
+                # cease further processing
+                logging.error("Processing terminated due to incorrect 'acceptColNames', 'ignoreColNames', or 'uniqueColNames' INI file settings.")
+                break
         else:
             dataRows += 1
             analyzeData(rowData, colNames, acceptColNames, bypassColNames, fileRows, dataRows)
@@ -439,7 +464,7 @@ def main():
         # if maximum column count mismatches value exceeded
         if maxColCountMisMatches > 0 and len(colCountMisMatches) >= maxColCountMisMatches:
             # cease further processing
-            logging.error("Processing terminated due to the number of column count mismatches.")
+            logging.error("Processing terminated due to the number of column count mismatches %d exceeding maximum allowed %d." % (colCountMisMatches, maxColCountMisMatches))
             break
             
     del csvReader
@@ -454,7 +479,12 @@ def main():
         
     logging.info('')
     logging.info("Read {:,} data rows in {:,.0f} seconds @ {:,.0f} records/second".format(dataRows, seconds, rcdsPerSec))
-    
+
+    # if error found
+    if err:
+        # bypass further processing
+        return successful, err
+        
     # column-by-column
     for colName in colNames:
         # if there were
@@ -715,7 +745,8 @@ def main():
 #    pprint (frqWidths)
 #    pprint (frqValues)
 
-def analyzeHead(rowCells, colNames):
+def analyzeHead(rowCells, colNames, acceptColNames, ignoreColNames, uniqueColNames):
+    err = False
     for colName in rowCells:
         colNames.append(colName)
         colUniqs[colName] = {}
@@ -727,7 +758,22 @@ def analyzeHead(rowCells, colNames):
         avgWidths[colName] = 0.0
         nonBlanks[colName] = 0
         cvgPrcnts[colName] = 0.0
-    return colNames
+    for colName in acceptColNames.keys():
+        if colName not in rowCells:
+            logging.error("Invalid column name '%s' specified in INI file 'acceptColNames' setting" % colName)
+            err = True
+            break
+    for colName in ignoreColNames.keys():
+        if colName not in rowCells:
+            logging.error("Invalid column name '%s' specified in INI file 'ignoreColNames' setting" % colName)
+            err = True
+            break
+    for colName in uniqueColNames.keys():
+        if colName not in rowCells:
+            logging.error("Invalid column name '%s' specified in INI file 'uniqueColNames' setting" % colName)
+            err = True
+            break
+    return colNames, err
     
 def analyzeData(rowCells, colNames, acceptColNames, bypassColNames, fileRow, dataRow):
     cells = 0
