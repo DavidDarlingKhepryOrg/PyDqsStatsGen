@@ -270,6 +270,12 @@ def main():
     srcFullPath = config['srcSpecs'].get('srcFullPath')
     srcDelim = config['srcSpecs'].get('srcDelim', ',')
     srcHeaderRows = int(config['srcSpecs'].get('srcHeaderRows', '1'))
+    # handle edge-values
+    # of source header rows
+    if srcHeaderRows <= 0:
+        srcHeaderRows = 1;
+    # assume the source file
+    # is minimally-quoted
     srcQuote = csv.QUOTE_MINIMAL
 
     # data provider's acronym    
@@ -442,13 +448,16 @@ def main():
     dataRows = 0
     for rowData in csvReader:
         fileRows += 1
-        if fileRows == 1:
+        # if this is the last
+        # of the header rows
+        if fileRows == srcHeaderRows:
             colNames, err = analyzeHead(rowData, colNames, acceptColNames, ignoreColNames, uniqueColNames)
             if err:
                 # cease further processing
                 logging.error("Processing terminated due to incorrect 'acceptColNames', 'ignoreColNames', or 'uniqueColNames' INI file settings.")
                 break
-        else:
+        # otherwise, if this is a data row
+        elif fileRows > srcHeaderRows:
             dataRows += 1
             analyzeData(rowData, colNames, acceptColNames, bypassColNames, fileRows, dataRows)
         if maxRows > 0 and dataRows >= maxRows:
