@@ -1,0 +1,296 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta name="generator" content="ReText 4.1.2">
+<title>ReadMe</title>
+</head>
+<body>
+<h1>README</h1>
+<ul>
+<li><strong>Author:</strong> David R. Darling</li>
+<li><strong>Date:</strong> 25 Nov 2014</li>
+<li><strong>Email:</strong> <a href="mailto:david.darling@khepry.com">david.darling@khepry.com</a></li>
+</ul>
+<h2>Overview</h2>
+<p>The <code>PyDqsStatsGen.py</code> Python 3 script will read a standard CSV file and calculate the following statistics for each desired column:</p>
+<ul>
+<li>minimum width</li>
+<li>maximum width</li>
+<li>average width</li>
+<li>non-blanks count</li>
+<li>coverage percent (non-blanks * 100.0 / dataRows)</li>
+<li>frequency of values (by value and occurrence ascending and descending)<ul>
+<li>with percent of total </li>
+</ul>
+</li>
+<li>frequency of widths<ul>
+<li>with percent of total</li>
+</ul>
+</li>
+</ul>
+<p>The program will produce two file outputs:</p>
+<ul>
+<li>a log file</li>
+<li>an HTML file of statistics</li>
+</ul>
+<p>In addition, the program will produce two database outputs:</p>
+<ul>
+<li>five (5) tables in an SQLite database file</li>
+<li>five (5) tables in the specified RDBMS database (e.g. PostgreSQL, MySQL, SQL Server)</li>
+</ul>
+<p>The five (5) database tables produced are as follows:</p>
+<ul>
+<li><code>ColCountMisMatches</code>: a table of those rows having a column count that does NOT match the header column count.</li>
+<li><code>DqsFileStats</code>: a table of file-level statistics.</li>
+<li><code>DqsMinMaxAvgCvgStats</code>: a table of <code>minWidth</code>, <code>maxWidth</code>, <code>avgWidth</code>, <code>nonBlanks</code>, and <code>cvgPct</code> values for each column.</li>
+<li><code>DqsValueFreqs</code>: a table of value frequencies and percents of total for each desired column.</li>
+<li><code>DqsWidthFreqs</code>: a table of width frequencies and percents of total for each desired column.</li>
+</ul>
+<h2>Running the Program</h2>
+<p>Navigate to the folder containing the <code>PyDqsStatsGen.py</code> script and follow the appropriate instructions below which are dependent upon the operating system under which the program is being executed.</p>
+<ul>
+<li>
+<p>Consult the <code>PyDqsStatsGen.ini</code> section of the documentation below and edit the <code>PyDqsStatsGen.ini</code> file as desired, saving it when modifications to it are complete.</p>
+</li>
+<li>
+<p><strong>Linux</strong></p>
+<ul>
+<li>Right-click in the PyDqsStatsGen "distributable" folder</li>
+<li>Within the resulting context menu, Click on "Open in Terminal"</li>
+<li>At the command prompt within the resulting terminal window, execute the following command:<ul>
+<li><code>python3 PyDqsStatsGen.py --iniFilePath PyDqsStatsGen.ini</code></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>Windows</strong><ul>
+<li>Hold down the <code>Shift</code> key and right-click in the PyDqsStatsGen "distributable" folder</li>
+<li>Within the resulting context menu, Click on "Open Command Window here"</li>
+<li>At the command prompt within the resulting terminal window, execute the following command:<ul>
+<li><code>python PyDqsStatsGen.py --iniFilePath PyDqsStatsGen.ini</code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>Navigate to the <code>tgtSubFolder</code> as specified within the <code>PyDqsStatsGen.ini</code> file.  If the default output and sub-folder structure was utilized, then two output files should appear within the sub-folder specified by the <code>tgtSubFolder</code> setting:</p>
+<ul>
+<li><em><code>srcFileBaseName</code></em><code>.html</code>  </li>
+<li><em><code>srcFileBaseName</code></em><code>.sqlite</code> </li>
+</ul>
+<h2>PyDqsStatsGen.ini</h2>
+<p><strong>[DEFAULT]</strong></p>
+<ul>
+<li><code>maxRows = 1000</code><ul>
+<li>This setting controls how many data rows of the source file will be processed.  A setting of '0' (zero) signals the program that the number of data rows to be processed will be unlimited.</li>
+</ul>
+</li>
+<li><code>flushCount = 10000</code><ul>
+<li>In the context of the PyDqsStatsGen program, this setting controls how many data rows are to be processed between progress notifications made to the system console and the program's log.</li>
+</ul>
+</li>
+<li><code>maxColCountMisMatches = 0</code><ul>
+<li>This setting controls how many data rows can have column count mismatches before the program's terminates further processing.  A setting of '0' (zero) signals the program that the number of column count mismatches will be unlimited.</li>
+</ul>
+</li>
+<li><code>maxHtmlCount = 5</code><ul>
+<li>This setting controls how many value frequencies will be display for each column on the DQS HTML statistics report.  A setting of '0' (zero) signals the program that the number of values frequencies for each column on the DQS HTML statistics report will be unlimited.</li>
+</ul>
+</li>
+<li><code>maxJdbcCount = 5</code><ul>
+<li>This setting controls how many value frequencies will be output for each column in the DQS JDBC statistics table.  A setting of '0' (zero) signals the program that the number of values frequencies for each column in the DQS JDBC statistics table will be unlimited.</li>
+</ul>
+</li>
+<li><code>runDateFormatString = %A %d %b %Y %I:%M %p %Z</code><ul>
+<li>This setting controls the output format of the execution date in both the DQS HTML report and DQS JDBC tables.  The formatting codes are consistent with the Python <code>strftime</code> function.</li>
+</ul>
+</li>
+<li><code>makoHtmlTemplateName = DqsStatsHtml.mako</code><ul>
+<li>This setting specifies the name of the Python MAKO template used to control the generation of the DQS HTML statistics report.  The template name should be in form of a valid file path.</li>
+</ul>
+</li>
+<li><code>makoJdbcTemplateName = DqsStatsJdbc.mako</code><ul>
+<li>This setting specifies the name of the Python MAKO template used to control the generation of the DQS JDBC statistics tables and the records that populate them.  The template name should be in form of a valid file path.</li>
+</ul>
+</li>
+</ul>
+<p><strong>[folders]</strong></p>
+<ul>
+<li><code>outFolder = ~/temp</code><ul>
+<li>This setting specifies the parent folder of the sub-folders defined below.  It should be in the form of a valid folder path.  A tilde (~) character is used as a shortcut for the current user's home folder.</li>
+</ul>
+</li>
+<li><code>logSubFolder = logFiles</code><ul>
+<li>This setting specifies the sub-folder within which the program's log file(s) will be written.</li>
+</ul>
+</li>
+<li><code>tgtSubFolder = tgtFiles</code><ul>
+<li>This setting specifies the sub-folder within which the program's target file(s) will be written.  At this point in time, the target files are as follows:<ul>
+<li>The DQS HTML statistics file which, by default, is named: <em>srcFileBaseName.html</em>.</li>
+<li>The DQS SQLite statistics file which, by default, is named: <em>srcFileBaseName.sqlite</em>.</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>[srcSpecs]</strong></p>
+<ul>
+<li><code>srcFullPath = '~/path/to/the/source/file.txt'</code><ul>
+<li>This setting is used to specify the name of the source file for which statistics are to be calculated.</li>
+</ul>
+</li>
+<li><code>srcDelim = ,</code><ul>
+<li>This setting is used to specify the character used as a column delimiter.</li>
+</ul>
+</li>
+<li><code>srcHeaderRows = 1</code><ul>
+<li>This setting is used to specify the number of header rows in the source file.  A source file must contain at least one header row.</li>
+</ul>
+</li>
+<li><code>dataProvider = NPPES</code><ul>
+<li>This is an acronym for the provider of the source data file.  This acronym will appear in each row of each table within the resulting statistical databases (e.g. SQLite, MySQL, PostgreSQL, SQL Server).    </li>
+</ul>
+</li>
+<li><code>acceptColNames = NPI,Entity Type Code,Replacement NPI,Employer Identification Number (EIN)</code><ul>
+<li>This is a comma-delimited list of columns upon which statistics are to be calculated.  An empty ACCEPT list will signal the program to calculate statistics on ALL of each row's columns.</li>
+</ul>
+</li>
+<li><code>ignoreColNames = Entity Type Code</code><ul>
+<li>This is a comma-delimited list of the columns within the <code>acceptColNames</code> setting <strong>for which statistics are <em>NOT</em> to be calculated.</strong>  An empty IGNORE list will signal the program to calculate statistics on ALL of each the columns within the <code>acceptColNames</code> setting.</li>
+</ul>
+</li>
+<li><code>uniqueColNames = NPI</code><ul>
+<li>This is a comma-delimited list of the columns within the <code>acceptColNames</code> setting <strong>for which value frequency statistics are <em>NOT</em> to be calculated.</strong>  An empty UNIQUE list will signal the program to calculate statistics on ALL of each the columns within the <code>acceptColNames</code> setting (other than those omitted via the <code>ignoreColNames</code> setting).</li>
+</ul>
+</li>
+</ul>
+<p><strong>[logging]</strong></p>
+<ul>
+<li>
+<p><code>logFileName = PyDqsStatsGen.log</code></p>
+<ul>
+<li>This setting is used to specify the name of the log file for the PyDqsStatsGen program.  If it is just a file name, then the log will be found under the sub-folder named in the <code>logSubFolder</code> setting.  If it is a full path, then the log file will be written to that full path.</li>
+</ul>
+</li>
+<li>
+<p><code>maxStdOutLvl = INFO</code></p>
+<ul>
+<li>This setting is used to control the level of messages that appear in the program's STDOUT console.  Valid values for this setting are below, but for the most part it should be left as <code>INFO</code>.<ul>
+<li><code>INFO</code></li>
+<li><code>DEBUG</code></li>
+<li><code>WARNING</code></li>
+<li><code>ERROR</code></li>
+<li><code>CRITICAL</code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>[jdbcSpecs]</strong></p>
+<ul>
+<li>These specifications are used to provide values needed by the program to output DQS statistics to database tables.  The <code>jdbcDropTableIfExistsCompliant</code> setting controls whether a <code>DROP TABLE IF EXISTS ...</code> syntax is used to drop a database table.  This syntax works for SQLite, MySQL, and PostgreSQL, but does NOT work for SQL Server, as another SQL command is used to drop tables.</li>
+<li>Valid values for the <code>jdbcType</code> setting are as follows:<ul>
+<li><code>pgsql</code> (used for connecting to a PostgreSQL database)</li>
+<li><code>mysql</code> (used for connecting to a MySQL database)</li>
+<li><code>mssql</code> (used for connecting to a SQL Server database)<pre><code># PostgreSQL parameters
+jdbcType = pgsql
+jdbcHost = localhost
+jdbcPort = 5432
+jdbcDatabase = dqsvalidator
+jdbcUID = dqsvalidator
+jdbcPWD = [redacted]
+jdbcDropTableIfExistsCompliant = True
+
+# # MySQL parameters
+# jdbcType = mysql
+# jdbcHost = localhost
+# jdbcPort = 3306
+# jdbcDatabase = dqsvalidator
+# jdbcUID = dqsvalidator
+# jdbcPWD = [redacted]
+# jdbcDropTableIfExistsCompliant = True
+
+# # SQL Server parameters
+# jdbcType = mssql
+# jdbcHost = Khepry-ASUS-LT1
+# jdbcPort = 1433
+# jdbcDatabase = dqsvalidator
+# jdbcUID = dqsvalidator
+# jdbcPWD = [redacted]
+# jdbcDropTableIfExistsCompliant = False
+</code></pre>
+</li>
+</ul>
+</li>
+</ul>
+<h2>Program Prerequisites and Dependencies</h2>
+<ul>
+<li><strong>Linux</strong><ul>
+<li>python 3.4<ul>
+<li>libraries <ul>
+<li>python3</li>
+<li>python3-all</li>
+<li>python3-dev</li>
+<li>python3-mako</li>
+<li>python3-mysql.connector</li>
+<li>python3-pip</li>
+<li>python3-psycopg2</li>
+<li>python-pysqlite2</li>
+<li>sqlite3</li>
+<li><code>sudo pip3 install pymssql</code></li>
+</ul>
+</li>
+<li>connectors<ul>
+<li><strong><em>NOTE: add freetds.conf file to the {home} folder of the user</em></strong><ul>
+<li>[global]<ul>
+<li>tds version = auto   </li>
+</ul>
+</li>
+</ul>
+</li>
+<li>freetds-bin</li>
+<li>freetds-common</li>
+<li>freetds-dev</li>
+<li>libdbd-freetds </li>
+<li>tdsodbc</li>
+<li>unixodbc</li>
+<li>unixodbc-dev</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>Windows</strong><ul>
+<li>Python 3.4<ul>
+<li><a href="http://repo.continuum.io/anaconda3/Anaconda3-2.0.1-Windows-x86_64.exe">Python 3.4 Windows 64-bit Graphical Installer</a></li>
+<li>Once the graphical installer is finished, open a command window with "Run as Administrator", and then execute the following commands:<ul>
+<li><code>c:\Anaconda3\Scripts\conda.exe update conda</code></li>
+<li><code>c:\Anaconda3\Scripts\conda.exe update pip</code> </li>
+<li><code>pip install mako</code></li>
+<li><code>pip install python-psycopg</code></li>
+</ul>
+</li>
+<li><a href="http://dev.mysql.com/get/Downloads/Connector-Python/mysql-connector-python-2.0.0-py3.4.msi">MySQL Connector/Python 3.4 Installer</a>     </li>
+<li><a href="http://dev.mysql.com/get/Downloads/Connector-Python/mysql-connector-python-1.2.3.zip">MySQL Connector/Python (Platform Independent)</a><ul>
+<li>Download the ZIP archive from dev.mysql.com and install from the command line.</li>
+<li>(Choose 'Platform Independent' from the drop-down box. That will show you the ZIP and TAR archive).</li>
+<li>Place unzipped folder within the Anaconda Python directory.</li>
+<li>Using command prompt, go into the directory of the mysql connector:<ul>
+<li>Shell path&gt; <code>python setup.py install</code></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="http://www.lfd.uci.edu/~gohlke/pythonlibs/#pymssql">SQL Server (pymssql 3.4)</a><ul>
+<li>pick the 64-bit version of pymssql     </li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</body>
+</html>
